@@ -3,23 +3,21 @@ import dotenv from "dotenv";
 import cookieParser from "cookie-parser";
 import { fileURLToPath } from "url";
 import { dirname } from "path";
-dotenv.config();
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-
+import path from "path"; // ✅ Add this line
 
 import "./lib/db.js";
-
 import authRouter from "./route/auth.router.js";
 import productRouter from "./route/product.router.js";
 import cartRouter from "./route/cart.router.js";
 import PaymentRouter from "./route/payment.router.js";
 
+dotenv.config();
 
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 const app = express();
 const PORT = process.env.PORT || 5000;
-// const __dirname = path.resolve();
 
 // Middleware
 app.use(cookieParser());
@@ -30,9 +28,12 @@ app.use("/api/auth", authRouter);
 app.use("/api/products", productRouter);
 app.use("/api/cart", cartRouter);
 app.use("/api/payment", PaymentRouter);
+
 app.get("/", (req, res) => {
   res.send("Server is working");
 });
+
+// Serve frontend
 const frontEndPath = path.join(__dirname, 'front-end', 'dist');
 app.use(express.static(frontEndPath));
 

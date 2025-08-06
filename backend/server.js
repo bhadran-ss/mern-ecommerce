@@ -19,7 +19,8 @@ app.use(express.json({ limit: "10mb" }));
 app.use(cors({
   origin: [
     "http://localhost:5173",
-    "https://mern-ecommerce-frontend-psi-ten.vercel.app"
+    "https://mern-ecommerce-frontend-psi-ten.vercel.app",
+    "https://mern-ecommerce-frontend-lol3n8did-bhadran-ss-projects.vercel.app"
   ],
   credentials: true
 }));

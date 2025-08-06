@@ -17,9 +17,13 @@ const PORT = process.env.PORT || 5000;
 app.use(cookieParser());
 app.use(express.json({ limit: "10mb" }));
 app.use(cors({
-  origin: 'http://localhost:5173',
-  credentials: true // important for cookies/auth
+  origin: [
+    "http://localhost:5173",
+    "https://mern-ecommerce-frontend-psi-ten.vercel.app"
+  ],
+  credentials: true
 }));
+
 
 // Routes
 app.use("/api/auth", authRouter);

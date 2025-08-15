@@ -22,10 +22,12 @@ const PORT = process.env.PORT || 5000;
 // Middleware
 app.use(cookieParser());
 app.use(express.json({ limit: "10mb" }));
-app.use(cors({
-  origin: process.env.CLIENT_URL || "*", // Use env for flexibility
-  credentials: true 
-}));
+app.use(
+  cors({
+    origin: process.env.CLIENT_URL || "*", // Use env for flexibility
+    credentials: true,
+  })
+);
 
 // API Routes
 app.use("/api/auth", authRouter);
@@ -37,10 +39,9 @@ app.use("/api/payment", PaymentRouter);
 if (process.env.NODE_ENV === "production") {
   const frontendPath = path.join(__dirname, "../front-end/dist");
   app.use(express.static(frontendPath));
-
-  // app.get("*", (req, res) => {
-  //   res.sendFile(path.join(frontendPath, "index.html"));
-  // });
+  app.get("/*", (req, res) => {
+    res.sendFile(path.join(frontendPath, "index.html"));
+  });
 } else {
   app.get("/", (req, res) => {
     res.send("Server is working (development mode)");

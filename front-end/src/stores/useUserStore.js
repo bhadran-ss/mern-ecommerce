@@ -20,7 +20,7 @@ export const useUserStore = create((set, get) => ({
       set({ user: data.user });
       toast.success("Registration successful");
     } catch (error) {
-      toast.error("Registration failed");
+      toast.error(error.message);
     } finally {
       set({ isLoading: false });
     }

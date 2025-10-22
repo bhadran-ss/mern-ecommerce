@@ -18,9 +18,9 @@ export const useUserStore = create((set, get) => ({
     try {
       const { data } = await axios.post("/auth/signup", FormData);
       set({ user: data.user });
-      toast.success("Registration successful");
+      toast.success(data.message);
     } catch (error) {
-      toast.error(error.message);
+      toast.error("Registration failed");
     } finally {
       set({ isLoading: false });
     }

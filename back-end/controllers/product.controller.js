@@ -96,6 +96,7 @@ const createProduct = async (req, res) => {
       price,
       image: cloudinaryResponse ? cloudinaryResponse.secure_url : "",
       category,
+      sellerId: req.user._id,
     });
     res.status(201).json({
       success: true,
@@ -109,6 +110,60 @@ const createProduct = async (req, res) => {
     });
   }
 };
+
+const updateProduct = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name, description, price, image, category, isFeatured } = req.body;
+
+    const product = await Product.findById(id);
+    if (!product) {
+      return res.status(404).json({
+        success: false,
+        message: "Product not found",
+      });
+    }
+
+    if (
+      req.user.role !== "admin" &&
+      product.sellerId.toString() !== req.user._id.toString()
+    ) {
+      return res.status(403).json({
+        success: false,
+        message: "Forbidden. You can only edit your own products.",
+      });
+    }
+
+    if (image && image !== product.image) {
+      const cloudinaryResponse = await cloudinary.uploader.upload(image, {
+        folder: "products",
+      });
+      product.image = cloudinaryResponse.secure_url;
+    }
+
+    product.name = name ?? product.name;
+    product.description = description ?? product.description;
+    product.price = price ?? product.price;
+    product.category = category ?? product.category;
+    if (typeof isFeatured === "boolean") {
+      product.isFeatured = isFeatured;
+    }
+
+    await product.save();
+
+    res.status(200).json({
+      success: true,
+      data: product,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Server Error",
+      error: error.message,
+    });
+  }
+};
+
 const deleteProduct = async (req, res) => {
   try {
     const { id } = req.params;
@@ -119,6 +174,17 @@ const deleteProduct = async (req, res) => {
         message: "Product not found",
       });
     }
+
+    if (
+      req.user.role !== "admin" &&
+      product.sellerId.toString() !== req.user._id.toString()
+    ) {
+      return res.status(403).json({
+        success: false,
+        message: "Forbidden. You can only delete your own products.",
+      });
+    }
+
     if (product.image) {
       const publicId = product.image.split("/").pop().split(".")[0];
       try {
@@ -193,6 +259,7 @@ export {
   getAllProducts,
   getFeaturedProducts,
   createProduct,
+  updateProduct,
   deleteProduct,
   getProductsByCategory,
   getProductById,

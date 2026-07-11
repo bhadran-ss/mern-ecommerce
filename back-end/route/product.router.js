@@ -1,6 +1,7 @@
 import express from "express";
 import * as productController from "../controllers/product.controller.js";
-import { protectRoute, adminRoute } from "../middleware/auth.middleware.js";
+import { protectRoute } from "../middleware/auth.middleware.js";
+import { authorize } from "../middleware/authorize.js";
 
 const router = express.Router();
 
@@ -10,17 +11,28 @@ router.get("/featured", productController.getFeaturedProducts);
 router.get("/category/:category", productController.getProductsByCategory);
 router.get("/:id", productController.getProductById);
 
-router.post("/", protectRoute, adminRoute, productController.createProduct);
+router.post(
+  "/",
+  protectRoute,
+  authorize("seller", "admin"),
+  productController.createProduct
+);
 router.patch(
   "/:id",
   protectRoute,
-  adminRoute,
+  authorize("seller", "admin"),
+  productController.updateProduct
+);
+router.patch(
+  "/:id/feature",
+  protectRoute,
+  authorize("admin"),
   productController.toggleFeaturedProduct
 );
 router.delete(
   "/:id",
   protectRoute,
-  adminRoute,
+  authorize("seller", "admin"),
   productController.deleteProduct
 );
 

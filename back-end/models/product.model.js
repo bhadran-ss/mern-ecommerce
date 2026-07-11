@@ -22,12 +22,17 @@ const productSchema = new mongoose.Schema(
       type: String,
       required: [true, "Category is required"],
     },
+    sellerId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+    },
     isFeatured: {
       type: Boolean,
       default: false,
     },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 const Product = mongoose.model("Product", productSchema);

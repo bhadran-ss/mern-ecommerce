@@ -33,11 +33,11 @@ const userSchema = new mongoose.Schema(
     ],
     role: {
       type: String,
-      enum: ["coustomer", "admin"],
-      default: "coustomer",
+      enum: ["customer", "seller", "admin"],
+      default: "customer",
     },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 // Hash password before saving

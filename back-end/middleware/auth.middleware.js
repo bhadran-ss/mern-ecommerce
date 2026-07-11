@@ -1,16 +1,18 @@
-import jwt from "jsonwebtoken";
 import User from "../models/user.model.js";
+import { decryptAccessToken } from "../utils/token.service.js";
 
 export const protectRoute = async (req, res, next) => {
   const token = req.cookies.accessToken;
 
   if (!token) {
-    return res.status(401).json({ message: "Unauthorized. No token provided." });
+    return res
+      .status(401)
+      .json({ message: "Unauthorized. No token provided." });
   }
 
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    const user = await User.findById(decoded.userId).select("-password");
+    const decoded = await decryptAccessToken(token);
+    const user = await User.findById(decoded.sub).select("-password");
 
     if (!user) {
       return res.status(401).json({ message: "User not found." });

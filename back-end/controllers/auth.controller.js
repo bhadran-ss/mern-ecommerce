@@ -1,8 +1,17 @@
-import jwt from "jsonwebtoken";
 import dotenv from "dotenv";
 import redis from "../lib/Redis.js";
 import User from "../models/user.model.js";
-import { SendTokenWithCookie } from "../utils/jwt.js";
+import {
+  createAccessToken,
+  createRefreshToken,
+  decryptRefreshToken,
+} from "../utils/token.service.js";
+import {
+  setSessionCookies,
+  setAccessCookie,
+  clearSessionCookies,
+} from "../utils/session.service.js";
+
 dotenv.config({ quiet: true });
 const signup = async (req, res) => {
   const { name, email, password } = req.body;
@@ -18,7 +27,29 @@ const signup = async (req, res) => {
   const user = new User({ name, email, password });
   try {
     await user.save();
-    await SendTokenWithCookie(res, user, "User registered successfully");
+
+    const accessToken = await createAccessToken(user);
+    const refreshToken = await createRefreshToken(user);
+
+    await redis.set(
+      `refresh_token:${user._id}`,
+      refreshToken,
+      "EX",
+      7 * 24 * 60 * 60,
+    ); // 7 days
+
+    setSessionCookies(res, accessToken, refreshToken);
+
+    return res.status(200).json({
+      success: true,
+      message: "User registered successfully",
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+      },
+    });
   } catch (error) {
     res.status(500).json({ message: "Error creating user", error });
   }
@@ -31,32 +62,54 @@ const login = async (req, res) => {
   }
   try {
     const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(400).json({ message: "Invalid credentials" });
+    }
+
     const isMatch = await user.comparePassword(password);
-    if (user && isMatch) {
-			    SendTokenWithCookie(res, user, "User logged in successfully");
-		}
-	} catch (error) {
-		res.status(500).json({ message: "Error logging in", error });
-	}
+    if (!isMatch) {
+      return res.status(400).json({ message: "Invalid credentials" });
+    }
+
+    const accessToken = await createAccessToken(user);
+    const refreshToken = await createRefreshToken(user);
+
+    await redis.set(
+      `refresh_token:${user._id}`,
+      refreshToken,
+      "EX",
+      7 * 24 * 60 * 60,
+    ); // 7 days
+
+    setSessionCookies(res, accessToken, refreshToken);
+
+    return res.status(200).json({
+      success: true,
+      message: "User logged in successfully",
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+      },
+    });
+  } catch (error) {
+    res.status(500).json({ message: "Error logging in", error });
+  }
 };
 const logout = async (req, res) => {
   const refreshToken = req.cookies.refreshToken;
-  console.log("Refresh Token:", refreshToken);
-  if (refreshToken) {
-    try {
-      const decorded = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET);
-      await redis.del(`refresh_token:${decorded.userId}`);
-      res
-        .clearCookie("accessToken")
-        .clearCookie("refreshToken")
-        .status(200)
-        .json({ message: "User logged out successfully" });
-    } catch (error) {
-      return res.status(500).json({ message: "Error logging out", error });
-    }
-  } else {
-    console.log("No refresh token found");
+  if (!refreshToken) {
     return res.status(400).json({ message: "No refresh token found" });
+  }
+
+  try {
+    const decoded = await decryptRefreshToken(refreshToken);
+    await redis.del(`refresh_token:${decoded.sub}`);
+    clearSessionCookies(res);
+    return res.status(200).json({ message: "User logged out successfully" });
+  } catch (error) {
+    return res.status(500).json({ message: "Error logging out", error });
   }
 };
 const profile = (req, res) => {
@@ -73,28 +126,25 @@ const refreshAccessToken = async (req, res) => {
     if (!refreshToken) {
       return res.status(401).json({ message: "No refresh token provided" });
     }
-    const decoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET);
-    const storedRefreshToken = await redis.get(
-      `refresh_token:${decoded.userId}`
-    );
+
+    const decoded = await decryptRefreshToken(refreshToken);
+    const storedRefreshToken = await redis.get(`refresh_token:${decoded.sub}`);
     if (storedRefreshToken !== refreshToken) {
       return res.status(401).json({ message: "Invalid refresh token" });
     }
-    const accessToken = jwt.sign(
-      { userId: decoded.userId },
-      process.env.JWT_SECRET,
-      { expiresIn: "15m" }
-    );
-    res.cookie("accessToken", accessToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "strict",
-      maxAge: 15 * 60 * 1000, // 15 minutes
+
+    const accessToken = await createAccessToken({
+      _id: decoded.sub,
+      role: decoded.role,
     });
+    setAccessCookie(res, accessToken);
 
     res.json({ message: "Token refreshed successfully" });
   } catch (error) {
     console.log("Error in refreshToken controller", error.message);
+    if (error.name === "TokenExpiredError") {
+      return res.status(401).json({ message: "Refresh token expired" });
+    }
     res.status(500).json({ message: "Server error", error: error.message });
   }
 };

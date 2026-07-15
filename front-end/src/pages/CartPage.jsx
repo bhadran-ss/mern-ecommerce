@@ -1,24 +1,26 @@
 import React from "react";
 import { Trash } from "lucide-react";
-import useCartStore from "../stores/useCartStore";
+import { useDispatch, useSelector } from "react-redux";
+import { removeFromCart, updateQuantity } from "../store/slices/cartSlice";
 import { loadStripe } from "@stripe/stripe-js";
 import axios from "../lib/axios";
 
 const CartPage = () => {
-  const { cart, total, removeFromCart, updateQuantity } = useCartStore();
+  const dispatch = useDispatch();
+  const { cart, total } = useSelector((state) => state.cart);
   const stripePromise = loadStripe(
-    "pk_test_51RaVaRQq8PvEmXQmDmqqWfC4rpLQm6e0FTznkKGW7Tjx536Wl96Rm2yWeSrGAnppt2bQvFmeViG3fk4SITeqGVLl00xSwG4m37"
+    "pk_test_51RaVaRQq8PvEmXQmDmqqWfC4rpLQm6e0FTznkKGW7Tjx536Wl96Rm2yWeSrGAnppt2bQvFmeViG3fk4SITeqGVLl00xSwG4m37",
   );
- const handlePayment = async () => {
+  const handlePayment = async () => {
     const stripe = await stripePromise;
     const response = await axios.post("/payment/checkout", {
       cart,
     });
     const sessionId = response.data.id;
-    console.log("response",response.data)
+    console.log("response", response.data);
     const result = await stripe.redirectToCheckout({ sessionId });
-    if(result.error){
-      console.error("Error",result.error)
+    if (result.error) {
+      console.error("Error", result.error);
     }
   };
   return (
@@ -51,7 +53,7 @@ const CartPage = () => {
                   <p className="text-gray-600">Rs. {item.price.toFixed(2)}</p>
                   <button
                     className="text-sm text-red-500 hover:underline mt-1"
-                    onClick={() => removeFromCart(item._id)}
+                    onClick={() => dispatch(removeFromCart(item._id))}
                   >
                     <Trash className="inline-block mr-1" size={16} />
                     Remove
@@ -63,14 +65,28 @@ const CartPage = () => {
               <div className="flex items-center justify-center space-x-3">
                 <button
                   className="px-2 py-1 border rounded hover:bg-gray-200"
-                  onClick={() => updateQuantity(item._id, item.quantity - 1)}
+                  onClick={() =>
+                    dispatch(
+                      updateQuantity({
+                        productId: item._id,
+                        quantity: item.quantity - 1,
+                      }),
+                    )
+                  }
                 >
                   -
                 </button>
                 <span className="w-6 text-center">{item.quantity}</span>
                 <button
                   className="px-2 py-1 border rounded hover:bg-gray-200"
-                  onClick={() => updateQuantity(item._id, item.quantity + 1)}
+                  onClick={() =>
+                    dispatch(
+                      updateQuantity({
+                        productId: item._id,
+                        quantity: item.quantity + 1,
+                      }),
+                    )
+                  }
                 >
                   +
                 </button>
@@ -99,7 +115,6 @@ const CartPage = () => {
               >
                 Checkout
               </button>
-             
             </div>
           </div>
         </div>

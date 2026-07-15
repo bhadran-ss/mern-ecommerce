@@ -1,13 +1,15 @@
 import React, { useState } from "react";
-import { useUserStore } from "../stores/useUserStore";
+import { useDispatch, useSelector } from "react-redux";
+import { loginUser } from "../store/slices/authSlice";
 
 const Login = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const { login, isLoading } = useUserStore();
+  const dispatch = useDispatch();
+  const { isLoading } = useSelector((state) => state.auth);
   const handleSubmit = (e) => {
     e.preventDefault();
-    login({ email, password });
+    dispatch(loginUser({ email, password }));
   };
   return (
     <>

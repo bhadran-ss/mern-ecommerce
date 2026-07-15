@@ -1,10 +1,12 @@
 import { useNavigate } from "react-router-dom";
-import { useProductStore } from "../stores/useProductStore";
+import { useSelector } from "react-redux";
 import Card from "./Card";
 
 const TopPicks = () => {
   const navigate = useNavigate();
-  const { featuredProducts } = useProductStore();
+  const featuredProducts = useSelector(
+    (state) => state.products.featuredProducts,
+  );
   return (
     <div className="px-6 md:px-20 py-16 bg-white text-center">
       <h1 className="text-3xl md:text-4xl font-semibold mb-10">TOP PICKS</h1>

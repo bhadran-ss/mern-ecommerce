@@ -1,6 +1,7 @@
 import dotenv from "dotenv";
 import stripe from "../lib/stripe.js";
 import Order from "../models/order.model.js";
+import Product from "../models/product.model.js";
 
 dotenv.config({ quiet: true });
 const createCheckoutSession = async (req, res) => {
@@ -8,6 +9,25 @@ const createCheckoutSession = async (req, res) => {
   if (!cart || cart.length === 0) {
     return res.status(400).json({ error: "Cart is empty" });
   }
+
+  const productIds = cart.map((item) => item._id || item.productId);
+  const products = await Product.find({ _id: { $in: productIds } });
+
+  for (const item of cart) {
+    const product = products.find(
+      (productItem) =>
+        productItem._id.toString() === (item._id || item.productId).toString(),
+    );
+    if (!product) {
+      return res.status(400).json({ error: `Product not found: ${item.name}` });
+    }
+    if (item.quantity > product.stock) {
+      return res.status(400).json({
+        error: `Not enough stock for ${product.name}. Available: ${product.stock}`,
+      });
+    }
+  }
+
   try {
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ["card"],
@@ -31,7 +51,7 @@ const createCheckoutSession = async (req, res) => {
           cart.map((item) => ({
             id: item._id || item.productId,
             qty: item.quantity,
-          }))
+          })),
         ),
       },
     });
@@ -60,6 +80,22 @@ const checkoutSucess = async (req, res) => {
       const session = await stripe.checkout.sessions.retrieve(sessionId);
       if (session.payment_status === "paid") {
         const products = JSON.parse(session.metadata.cartItems || "[]");
+
+        for (const item of products) {
+          const updateResult = await Product.updateOne(
+            {
+              _id: item.id,
+              stock: { $gte: item.qty },
+            },
+            { $inc: { stock: -item.qty } },
+          );
+          if (updateResult.modifiedCount === 0) {
+            return res.status(400).json({
+              error: `Unable to decrement stock for product ${item.id}. It may be out of stock.`,
+            });
+          }
+        }
+
         const newOrder = Order({
           user: session.metadata.userId || null,
           products: products.map((item) => ({

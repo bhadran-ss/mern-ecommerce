@@ -1,5 +1,6 @@
 import React, { useState } from "react";
-import { useUserStore } from "../stores/useUserStore";
+import { useDispatch, useSelector } from "react-redux";
+import { registerUser } from "../store/slices/authSlice";
 
 const Register = () => {
   const [formData, setFormData] = useState({
@@ -7,12 +8,13 @@ const Register = () => {
     email: "",
     password: "",
     confirmPassword: "",
+    role: "customer",
   });
-  const { register, isLoading } = useUserStore();
+  const dispatch = useDispatch();
+  const { isLoading } = useSelector((state) => state.auth);
   const handleSubmit = (e) => {
     e.preventDefault();
-    console.log("form data", formData);
-    register(formData);
+    dispatch(registerUser(formData));
   };
   return (
     <>
@@ -62,6 +64,16 @@ const Register = () => {
                   setFormData({ ...formData, confirmPassword: e.target.value })
                 }
               />
+              <select
+                className="w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900"
+                value={formData.role}
+                onChange={(e) =>
+                  setFormData({ ...formData, role: e.target.value })
+                }
+              >
+                <option value="customer">Customer</option>
+                <option value="seller">Seller</option>
+              </select>
               <button className="w-full bg-gray-900 text-white py-3 rounded-lg font-medium hover:bg-gray-800 transition duration-300">
                 Register
               </button>

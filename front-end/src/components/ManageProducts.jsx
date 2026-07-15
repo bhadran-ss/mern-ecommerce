@@ -1,20 +1,23 @@
-import React, { useEffect } from 'react'
-import { useProductStore } from '../stores/useProductStore';
-import { Star, Trash } from 'lucide-react';
+import React from "react";
+import { useDispatch, useSelector } from "react-redux";
+import { Star, Trash } from "lucide-react";
+import {
+  toggleFeatured,
+  deleteProduct as deleteProductThunk,
+} from "../store/slices/productSlice";
 
 const ManageProducts = () => {
-  const { products, toggleFeatured ,deleteProduct } = useProductStore();
-  useEffect(() => {
-    console.log('Products:', products);
-  }, [products]);
+  const dispatch = useDispatch();
+  const products = useSelector((state) => state.products.products);
   if (products.length === 0) {
     return (
       <div className="max-w-6xl mx-auto p-6 bg-white rounded-xl shadow mt-10">
-        <h1 className="text-2xl font-semibold mb-6 text-center">Refresh the website</h1>
+        <h1 className="text-2xl font-semibold mb-6 text-center">
+          Refresh the website
+        </h1>
       </div>
     );
   }
-
 
   return (
     <div className="max-w-6xl mx-auto p-6 bg-white rounded-xl shadow mt-10">
@@ -46,7 +49,7 @@ const ManageProducts = () => {
                 </td>
                 <td className="px-4 py-3">
                   <button
-                    onClick={() => toggleFeatured(product._id)}
+                    onClick={() => dispatch(toggleFeatured(product._id))}
                     className={`p-2 rounded-full transition ${
                       product.isFeatured
                         ? "bg-yellow-400 hover:bg-yellow-500"
@@ -58,7 +61,7 @@ const ManageProducts = () => {
                 </td>
                 <td className="px-4 py-3">
                   <button
-                    onClick={() => deleteProduct(product._id)}
+                    onClick={() => dispatch(deleteProductThunk(product._id))}
                     className="p-2 bg-red-500 hover:bg-red-600 text-white rounded-full transition"
                   >
                     <Trash size={20} />
@@ -71,6 +74,6 @@ const ManageProducts = () => {
       </div>
     </div>
   );
-}
+};
 
-export default ManageProducts
+export default ManageProducts;

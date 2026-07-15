@@ -1,22 +1,28 @@
 import React, { useEffect } from "react";
-import { useProductStore } from "../stores/useProductStore";
+import { useDispatch, useSelector } from "react-redux";
 import Card from "../components/Card";
 import { useLocation } from "react-router-dom";
+import {
+  fetchAllProducts,
+  getSearchResult,
+} from "../store/slices/productSlice";
 
 const AllProducts = () => {
-  const { products, fetchAllProducts, getSearchResult, searchResult, loading } =
-    useProductStore();
+  const dispatch = useDispatch();
+  const { products, searchResult, loading } = useSelector(
+    (state) => state.products,
+  );
   const location = useLocation();
   const queryParams = new URLSearchParams(location.search);
   const searchQuery = queryParams.get("search");
   const displayProducts = searchResult.length > 0 ? searchResult : products;
 
   useEffect(() => {
-    fetchAllProducts();
-  }, [fetchAllProducts]);
+    dispatch(fetchAllProducts());
+  }, [dispatch]);
   useEffect(() => {
     if (searchQuery) {
-      getSearchResult(searchQuery);
+      dispatch(getSearchResult(searchQuery));
     }
   }, [getSearchResult, searchQuery]);
   if (loading) {

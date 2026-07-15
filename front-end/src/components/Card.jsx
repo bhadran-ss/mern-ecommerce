@@ -1,14 +1,13 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
 import { BiCartAdd } from "react-icons/bi";
-import { useUserStore } from "../stores/useUserStore";
+import { useDispatch, useSelector } from "react-redux";
 import toast from "react-hot-toast";
-import useCartStore from "../stores/useCartStore";
-
+import { addToCart as addToCartThunk } from "../store/slices/cartSlice";
 
 const Card = ({ product }) => {
-  const { user } = useUserStore();
-  const { addToCart } = useCartStore();
+  const { user } = useSelector((state) => state.auth);
+  const dispatch = useDispatch();
   const navigate = useNavigate();
 
   const handleAddToCart = () => {
@@ -16,7 +15,7 @@ const Card = ({ product }) => {
       toast.error("Please log in to add items to your cart.", { id: "login" });
       return;
     } else {
-      addToCart(product);
+      dispatch(addToCartThunk(product));
     }
   };
   const handleCardClick = () => {

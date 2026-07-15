@@ -1,20 +1,20 @@
 import React, { useEffect } from "react";
 import { useParams } from "react-router-dom";
-
-import { useProductStore } from "../stores/useProductStore";
-import useCartStore from "../stores/useCartStore";
+import { useDispatch, useSelector } from "react-redux";
+import { fetchProduct } from "../store/slices/productSlice";
+import { addToCart as addToCartThunk } from "../store/slices/cartSlice";
 
 const DetailedCard = () => {
   const { id } = useParams();
-  const { fetchProduct, detailedProduct } = useProductStore();
-  const { addToCart } = useCartStore();
+  const dispatch = useDispatch();
+  const { detailedProduct } = useSelector((state) => state.products);
   useEffect(() => {
-    fetchProduct(id);
-  }, [id]);
+    dispatch(fetchProduct(id));
+  }, [dispatch, id]);
 
   const handleAddToCart = () => {
     if (detailedProduct) {
-      addToCart(detailedProduct);
+      dispatch(addToCartThunk(detailedProduct));
     }
   };
 

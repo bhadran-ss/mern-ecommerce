@@ -5,35 +5,42 @@ import Register from "./pages/Register";
 import AdminPage from "./pages/AdminPage";
 import { Toaster } from "react-hot-toast";
 import Login from "./pages/Login";
-import { useUserStore } from "./stores/useUserStore";
 import { useEffect } from "react";
-import { useProductStore } from "./stores/useProductStore";
+import { useDispatch, useSelector } from "react-redux";
+import { checkAuth as checkAuthThunk } from "./store/slices/authSlice";
+import { getFeaturedProducts as getFeaturedProductsThunk } from "./store/slices/productSlice";
+import { getCart as getCartThunk } from "./store/slices/cartSlice";
 import CategoryPage from "./pages/CategoryPage";
 import CartPage from "./pages/CartPage";
-import useCartStore from "./stores/useCartStore";
 import PurchaseSuccessPage from "./pages/PurchaseSuccessPage";
 import PurchaseCancelPage from "./pages/PurchaseCancelPage";
 import DetailedCard from "./pages/DetailedCard";
 import AllProducts from "./pages/AllProducts";
 import AboutPage from "./pages/AboutPage";
 import ContactPage from "./pages/ContactPage";
+
 function App() {
-  const { user, checkAuth, checkingAuth } = useUserStore();
-  const { getFeaturedProducts, featuredProducts } = useProductStore();
-  const { getCart } = useCartStore();
+  const dispatch = useDispatch();
+  const { user, checkingAuth } = useSelector((state) => state.auth);
+  const featuredProducts = useSelector(
+    (state) => state.products.featuredProducts,
+  );
+
   useEffect(() => {
-    checkAuth();
-  }, [checkAuth]);
+    dispatch(checkAuthThunk());
+  }, [dispatch]);
+
   useEffect(() => {
     if (user) {
-      getCart();
+      dispatch(getCartThunk());
     }
-  }, [user, getCart]);
+  }, [dispatch, user]);
+
   useEffect(() => {
     if (featuredProducts.length === 0) {
-      getFeaturedProducts();
+      dispatch(getFeaturedProductsThunk());
     }
-  }, [getFeaturedProducts, featuredProducts]);
+  }, [dispatch, featuredProducts.length]);
 
   if (checkingAuth) {
     return (
@@ -45,6 +52,7 @@ function App() {
       </div>
     );
   }
+
   return (
     <div className="min-h-screen bg-white flex flex-col relative py-0 text-2xl">
       <Header />
@@ -59,6 +67,16 @@ function App() {
         <Route
           path="/secret-panel"
           element={user?.role === "admin" ? <AdminPage /> : <Navigate to="/" />}
+        />
+        <Route
+          path="/seller-panel"
+          element={
+            user?.role === "seller" || user?.role === "admin" ? (
+              <AdminPage />
+            ) : (
+              <Navigate to="/" />
+            )
+          }
         />
         <Route path="/category/:category" element={<CategoryPage />} />
         <Route
@@ -81,4 +99,5 @@ function App() {
     </div>
   );
 }
+
 export default App;

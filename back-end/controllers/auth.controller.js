@@ -14,7 +14,7 @@ import {
 
 dotenv.config({ quiet: true });
 const signup = async (req, res) => {
-  const { name, email, password } = req.body;
+  const { name, email, password, role } = req.body;
   if (!name || !email || !password) {
     return res.status(400).json({ message: "All fields are required" });
   }
@@ -24,7 +24,8 @@ const signup = async (req, res) => {
     return res.status(400).json({ message: "User already exists" });
   }
 
-  const user = new User({ name, email, password });
+  const safeRole = role === "seller" ? "seller" : "customer";
+  const user = new User({ name, email, password, role: safeRole });
   try {
     await user.save();
 

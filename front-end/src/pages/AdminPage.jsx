@@ -1,14 +1,15 @@
 import React, { useEffect, useState } from "react";
+import { useDispatch } from "react-redux";
 import ManageProducts from "../components/ManageProducts";
 import AddProduct from "../components/AddProduct";
-import { useProductStore } from "../stores/useProductStore";
+import { fetchAllProducts } from "../store/slices/productSlice";
 
 const AdminPage = () => {
-  const { fetchAllProducts } = useProductStore();
+  const dispatch = useDispatch();
   const [activeTab, setActiveTab] = useState("addProduct");
   useEffect(() => {
-    fetchAllProducts();
-  }, [fetchAllProducts]);
+    dispatch(fetchAllProducts());
+  }, [dispatch]);
   return (
     <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8 flex flex-col items-center">
       <div className="bg-white p-6 md:p-8 rounded-xl shadow text-center w-full max-w-2xl">

@@ -1,6 +1,7 @@
-import React, { useState } from 'react'
-import { Upload } from 'lucide-react';
-import {useProductStore} from '../stores/useProductStore';
+import React, { useState } from "react";
+import { Upload } from "lucide-react";
+import { useDispatch, useSelector } from "react-redux";
+import { createProduct as createProductThunk } from "../store/slices/productSlice";
 
 const AddProduct = () => {
   const categorys = ["jeans", "shirts", "suits", "bags", "jackets", "shoes"];
@@ -11,7 +12,8 @@ const AddProduct = () => {
     price: 0,
     image: null,
   });
-  const {createProduct , loading} = useProductStore();
+  const dispatch = useDispatch();
+  const loading = useSelector((state) => state.products.loading);
 
   const handleImageChange = (e) => {
     const file = e.target.files[0];
@@ -28,8 +30,7 @@ const AddProduct = () => {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    console.log("Submitted:", newproduct);
-    createProduct(newproduct);
+    dispatch(createProductThunk(newproduct));
     setNewProduct({
       name: "",
       description: "",
@@ -37,11 +38,13 @@ const AddProduct = () => {
       price: 0,
       image: null,
     });
-
   };
   if (loading) {
     return (
-      <div id='preloader' className='fixed inset-0 flex items-center justify-center bg-white z-50'>
+      <div
+        id="preloader"
+        className="fixed inset-0 flex items-center justify-center bg-white z-50"
+      >
         <div className="loader"></div>
       </div>
     );
@@ -49,7 +52,9 @@ const AddProduct = () => {
 
   return (
     <div className="max-w-2xl mx-auto p-6 bg-white rounded-lg shadow mt-10">
-      <h1 className="text-3xl font-semibold mb-6 text-center">Add New Product</h1>
+      <h1 className="text-3xl font-semibold mb-6 text-center">
+        Add New Product
+      </h1>
       <form onSubmit={handleSubmit} className="space-y-5">
         <div>
           <label className="block font-medium mb-1">Product Name</label>
@@ -57,7 +62,9 @@ const AddProduct = () => {
             type="text"
             className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500"
             value={newproduct.name}
-            onChange={(e) => setNewProduct({ ...newproduct, name: e.target.value })}
+            onChange={(e) =>
+              setNewProduct({ ...newproduct, name: e.target.value })
+            }
             required
           />
         </div>
@@ -68,7 +75,9 @@ const AddProduct = () => {
             rows="4"
             className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500"
             value={newproduct.description}
-            onChange={(e) => setNewProduct({ ...newproduct, description: e.target.value })}
+            onChange={(e) =>
+              setNewProduct({ ...newproduct, description: e.target.value })
+            }
             required
           />
         </div>
@@ -78,7 +87,9 @@ const AddProduct = () => {
           <select
             className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500"
             value={newproduct.category}
-            onChange={(e) => setNewProduct({ ...newproduct, category: e.target.value })}
+            onChange={(e) =>
+              setNewProduct({ ...newproduct, category: e.target.value })
+            }
           >
             {categorys.map((category) => (
               <option key={category} value={category}>
@@ -95,7 +106,10 @@ const AddProduct = () => {
             className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500"
             value={newproduct.price}
             onChange={(e) =>
-              setNewProduct({ ...newproduct, price: parseFloat(e.target.value) })
+              setNewProduct({
+                ...newproduct,
+                price: parseFloat(e.target.value),
+              })
             }
             required
           />
@@ -132,6 +146,6 @@ const AddProduct = () => {
       </form>
     </div>
   );
-}
+};
 
-export default AddProduct
+export default AddProduct;

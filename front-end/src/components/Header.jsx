@@ -1,10 +1,11 @@
 import React, { useRef, useState } from "react";
 import { BsCartPlus, BsSearch } from "react-icons/bs";
 import { Menu, X, XCircle } from "lucide-react";
-import { useUserStore } from "../stores/useUserStore";
+import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
-import useCartStore from "../stores/useCartStore";
-import { useProductStore } from "../stores/useProductStore";
+import { logoutUser } from "../store/slices/authSlice";
+import { clearSearchResult } from "../store/slices/productSlice";
+
 const Header = () => {
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [activeLink, setActiveLink] = useState("Home");
@@ -16,9 +17,9 @@ const Header = () => {
     { label: "About", path: "/about" },
     { label: "Contact", path: "/contact" },
   ];
-  const { user, logout } = useUserStore();
-  const { cart } = useCartStore();
-  const { clearSearchResult } = useProductStore();
+  const dispatch = useDispatch();
+  const { user } = useSelector((state) => state.auth);
+  const cart = useSelector((state) => state.cart.cart);
   const navigate = useNavigate();
 
   const handleSearch = () => {
@@ -32,21 +33,19 @@ const Header = () => {
   return (
     <>
       {/* Top Navigation Bar */}
-      <header className="w-full shadow-sm px-10 py-6 sticky top-0 z-50 bg-white">
+      <header className="w-full shadow-sm px-4 sm:px-6 lg:px-10 py-4 lg:py-6 sticky top-0 z-50 bg-white">
         <div className="max-w-screen-xl mx-auto flex items-center justify-between">
           {/* Logo */}
-          <div className="font-bold text-2xl leading-tight">
-            Vistyle 
-          </div>
+          <div className="text-xl md:text-2xl font-bold">Vistyle</div>
           {/* Search Bar */}
           {isSearchOpen ? (
-            <div className="relative md:ml-10 md:w-1/3 w-full px-4 md:px-0 z-50">
+            <div className="absolute inset-x-0 top-0 bg-white p-4 shadow-md z-50">
               <input
                 type="text"
                 placeholder="Search..."
                 id="search"
                 ref={searchRef}
-                className="w-full border border-gray-300 rounded-full px-4 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                className="w-full border border-gray-300 rounded-full px-4 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500 md:max-w-md"
                 onKeyDown={(e) => {
                   if (e.key === "Enter") {
                     handleSearch();
@@ -61,7 +60,7 @@ const Header = () => {
               </button>
             </div>
           ) : (
-            <nav className="hidden md:flex items-center space-x-10 px-4 py-2">
+            <nav className="hidden md:flex items-center space-x-5 lg:space-x-8 px-4 py-2">
               {navItems.map((item) => (
                 <a
                   key={item.label}
@@ -69,7 +68,7 @@ const Header = () => {
                     setActiveLink(item.label);
                     navigate(item.path);
                     if (item.label === "Shop") {
-                      clearSearchResult();
+                      dispatch(clearSearchResult());
                     }
                   }}
                   className={`font-medium relative ${
@@ -85,7 +84,7 @@ const Header = () => {
           )}
           {/* Mobile Nav */}
           {isMobileOpen && (
-            <div className="absolute top-16 right-0 w-56 bg-white shadow-md md:hidden">
+            <div className="absolute left-0 top-full w-full bg-white shadow-lg md:hidden">
               <nav className="flex flex-col items-start space-y-4 p-4">
                 {navItems.map((item) => (
                   <a
@@ -96,7 +95,7 @@ const Header = () => {
                       setIsMobileOpen(false);
                       navigate(item.path);
                       if (item.label === "Shop") {
-                        clearSearchResult();
+                        dispatch(clearSearchResult());
                       }
                     }}
                     className={`relative font-medium text-black after:content-[''] after:absolute after:bottom-[-4px] after:left-0 after:h-[2px] after:w-full after:bg-black after:transition-transform after:duration-300 after:scale-x-0 after:origin-left ${
@@ -116,7 +115,7 @@ const Header = () => {
             {user ? (
               <div className="flex items-center space-x-1 text-gray-900 text-sm font-medium px-4 sm:px-0">
                 <button
-                  onClick={() => logout()}
+                  onClick={() => dispatch(logoutUser())}
                   className="hover:text-black hover:underline transition duration-150"
                 >
                   Logout
@@ -144,12 +143,16 @@ const Header = () => {
               className="w-5 h-5 cursor-pointer text-black"
               onClick={() => setIsSearchOpen(!isSearchOpen)}
             />
-            {user?.role === "admin" && (
+            {(user?.role === "admin" || user?.role === "seller") && (
               <button
-                onClick={() => navigate("/secret-panel")}
+                onClick={() =>
+                  navigate(
+                    user?.role === "admin" ? "/secret-panel" : "/seller-panel",
+                  )
+                }
                 className="hover:text-black hover:underline transition duration-150 text-sm font-medium px-4 sm:px-0"
               >
-                Admin
+                {user?.role === "admin" ? "Admin" : "Seller"}
               </button>
             )}
             <div className="relative" onClick={() => navigate("/cart")}>

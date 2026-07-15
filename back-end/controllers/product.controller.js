@@ -83,18 +83,38 @@ const searchProducts = async (req, res) => {
 
 const createProduct = async (req, res) => {
   try {
-    const { name, description, price, image, category } = req.body;
-    let cloudinaryResponse = null;
-    if (image) {
-      cloudinaryResponse = await cloudinary.uploader.upload(image, {
+    const {
+      name,
+      description,
+      price,
+      images = [],
+      image,
+      category,
+      stock,
+    } = req.body;
+    const uploadedImages = [];
+
+    if (Array.isArray(images) && images.length > 0) {
+      for (const file of images) {
+        const cloudinaryResponse = await cloudinary.uploader.upload(file, {
+          folder: "products",
+        });
+        uploadedImages.push(cloudinaryResponse.secure_url);
+      }
+    } else if (image) {
+      const cloudinaryResponse = await cloudinary.uploader.upload(image, {
         folder: "products",
       });
+      uploadedImages.push(cloudinaryResponse.secure_url);
     }
+
     const product = await Product.create({
       name,
       description,
       price,
-      image: cloudinaryResponse ? cloudinaryResponse.secure_url : "",
+      image: uploadedImages[0] || "",
+      images: uploadedImages,
+      stock: stock ?? 0,
       category,
       sellerId: req.user._id,
     });
@@ -114,7 +134,16 @@ const createProduct = async (req, res) => {
 const updateProduct = async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, description, price, image, category, isFeatured } = req.body;
+    const {
+      name,
+      description,
+      price,
+      images = [],
+      image,
+      category,
+      isFeatured,
+      stock,
+    } = req.body;
 
     const product = await Product.findById(id);
     if (!product) {
@@ -134,11 +163,24 @@ const updateProduct = async (req, res) => {
       });
     }
 
-    if (image && image !== product.image) {
+    if (Array.isArray(images) && images.length > 0) {
+      const uploadedImages = [];
+      for (const file of images) {
+        const cloudinaryResponse = await cloudinary.uploader.upload(file, {
+          folder: "products",
+        });
+        uploadedImages.push(cloudinaryResponse.secure_url);
+      }
+      product.images = uploadedImages;
+      product.image = uploadedImages[0] || product.image;
+    } else if (image && image !== product.image) {
       const cloudinaryResponse = await cloudinary.uploader.upload(image, {
         folder: "products",
       });
       product.image = cloudinaryResponse.secure_url;
+      if (!product.images || product.images.length === 0) {
+        product.images = [cloudinaryResponse.secure_url];
+      }
     }
 
     product.name = name ?? product.name;
@@ -147,6 +189,9 @@ const updateProduct = async (req, res) => {
     product.category = category ?? product.category;
     if (typeof isFeatured === "boolean") {
       product.isFeatured = isFeatured;
+    }
+    if (typeof stock === "number") {
+      product.stock = stock;
     }
 
     await product.save();

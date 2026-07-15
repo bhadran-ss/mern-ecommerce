@@ -1,6 +1,7 @@
 import React from "react";
 import { Trash } from "lucide-react";
 import { useDispatch, useSelector } from "react-redux";
+import toast from "react-hot-toast";
 import { removeFromCart, updateQuantity } from "../store/slices/cartSlice";
 import { loadStripe } from "@stripe/stripe-js";
 import axios from "../lib/axios";
@@ -36,68 +37,88 @@ const CartPage = () => {
         </div>
       ) : (
         <div className="space-y-6">
-          {cart.map((item) => (
-            <div
-              key={item._id}
-              className="grid grid-cols-1 md:grid-cols-4 items-center gap-4 border-b py-6"
-            >
-              {/* Product Info */}
-              <div className="flex items-center space-x-4 col-span-2">
-                <img
-                  src={item.image}
-                  alt={item.name}
-                  className="w-20 h-20 object-cover rounded-md"
-                />
-                <div>
-                  <h3 className="text-lg font-medium">{item.name}</h3>
-                  <p className="text-gray-600">Rs. {item.price.toFixed(2)}</p>
+          {cart.map((item) => {
+            const availableStock = Number(item.stock ?? 0);
+            const isOutOfStock = availableStock <= 0;
+
+            return (
+              <div
+                key={item._id}
+                className="grid grid-cols-1 gap-4 border-b py-6 md:grid-cols-[1.5fr_0.9fr_0.7fr] md:items-center"
+              >
+                <div className="flex min-w-0 items-center space-x-4 md:col-span-1">
+                  <img
+                    src={item.image}
+                    alt={item.name}
+                    className="w-20 h-20 object-cover rounded-md"
+                  />
+                  <div className="min-w-0">
+                    <h3 className="text-lg font-medium">{item.name}</h3>
+                    <p className="text-gray-600">Rs. {item.price.toFixed(2)}</p>
+                    <p
+                      className={`text-xs font-semibold ${
+                        isOutOfStock ? "text-red-600" : "text-green-600"
+                      }`}
+                    >
+                      {isOutOfStock
+                        ? "Out of stock"
+                        : `${availableStock} available in stock`}
+                    </p>
+                    <button
+                      className="text-sm text-red-500 hover:underline mt-1"
+                      onClick={() => dispatch(removeFromCart(item._id))}
+                    >
+                      <Trash className="inline-block mr-1" size={16} />
+                      Remove
+                    </button>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-center space-x-3">
                   <button
-                    className="text-sm text-red-500 hover:underline mt-1"
-                    onClick={() => dispatch(removeFromCart(item._id))}
+                    className="px-2 py-1 border rounded hover:bg-gray-200 disabled:cursor-not-allowed disabled:opacity-50"
+                    disabled={item.quantity <= 1}
+                    onClick={() =>
+                      dispatch(
+                        updateQuantity({
+                          productId: item._id,
+                          quantity: item.quantity - 1,
+                        }),
+                      )
+                    }
                   >
-                    <Trash className="inline-block mr-1" size={16} />
-                    Remove
+                    -
+                  </button>
+                  <span className="w-6 text-center">{item.quantity}</span>
+                  <button
+                    className="px-2 py-1 border rounded hover:bg-gray-200 disabled:cursor-not-allowed disabled:opacity-50"
+                    disabled={item.quantity >= availableStock || isOutOfStock}
+                    onClick={() => {
+                      if (item.quantity >= availableStock) {
+                        toast.error(
+                          `Only ${availableStock} item(s) left in stock.`,
+                        );
+                        return;
+                      }
+
+                      dispatch(
+                        updateQuantity({
+                          productId: item._id,
+                          quantity: item.quantity + 1,
+                        }),
+                      );
+                    }}
+                  >
+                    +
                   </button>
                 </div>
-              </div>
 
-              {/* Quantity */}
-              <div className="flex items-center justify-center space-x-3">
-                <button
-                  className="px-2 py-1 border rounded hover:bg-gray-200"
-                  onClick={() =>
-                    dispatch(
-                      updateQuantity({
-                        productId: item._id,
-                        quantity: item.quantity - 1,
-                      }),
-                    )
-                  }
-                >
-                  -
-                </button>
-                <span className="w-6 text-center">{item.quantity}</span>
-                <button
-                  className="px-2 py-1 border rounded hover:bg-gray-200"
-                  onClick={() =>
-                    dispatch(
-                      updateQuantity({
-                        productId: item._id,
-                        quantity: item.quantity + 1,
-                      }),
-                    )
-                  }
-                >
-                  +
-                </button>
+                <div className="text-center font-semibold md:text-right">
+                  Rs. {(item.price * item.quantity).toFixed(2)}
+                </div>
               </div>
-
-              {/* Item Total */}
-              <div className="text-center font-semibold">
-                Rs. {(item.price * item.quantity).toFixed(2)}
-              </div>
-            </div>
-          ))}
+            );
+          })}
 
           {/* Footer */}
           <div className="mt-10 border-t pt-6 flex flex-col md:flex-row justify-between items-center">

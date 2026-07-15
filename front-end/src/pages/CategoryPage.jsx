@@ -13,9 +13,9 @@ const CategoryPage = () => {
   }, [dispatch, category]);
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-8">
+    <div className="max-w-7xl mx-auto px-3 py-6 sm:px-4 sm:py-8">
       <div className="text-center mb-8">
-        <h1 className="text-3xl font-bold text-gray-800">
+        <h1 className="text-2xl sm:text-3xl font-bold text-gray-800">
           {category.toUpperCase()}
         </h1>
         <div className="mt-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -47,10 +47,10 @@ const CategoryPage = () => {
           <div className="loader"></div>
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-2 gap-3 sm:gap-6 md:grid-cols-3 xl:grid-cols-4">
           {categoryProducts.length > 0 ? (
             categoryProducts.map((product) => (
-              <div key={product._id || product.id}>
+              <div key={product._id || product.id} className="w-full min-w-0">
                 <Card product={product} />
               </div>
             ))

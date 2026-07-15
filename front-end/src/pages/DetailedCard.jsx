@@ -8,14 +8,21 @@ const DetailedCard = () => {
   const { id } = useParams();
   const dispatch = useDispatch();
   const { detailedProduct } = useSelector((state) => state.products);
+  const stockLeft = Number(detailedProduct?.stock ?? 0);
+  const isOutOfStock = stockLeft <= 0;
+
   useEffect(() => {
     dispatch(fetchProduct(id));
   }, [dispatch, id]);
 
   const handleAddToCart = () => {
-    if (detailedProduct) {
-      dispatch(addToCartThunk(detailedProduct));
+    if (!detailedProduct) return;
+
+    if (isOutOfStock) {
+      return;
     }
+
+    dispatch(addToCartThunk(detailedProduct));
   };
 
   if (!detailedProduct) {
@@ -47,7 +54,7 @@ const DetailedCard = () => {
             {detailedProduct.name}
           </h1>
 
-          <div className="flex items-center gap-3 text-lg">
+          <div className="flex items-center gap-3 text-lg flex-wrap">
             <span className="text-gray-700 font-semibold">
               Rs. {detailedProduct.price}
             </span>
@@ -56,6 +63,15 @@ const DetailedCard = () => {
                 Sale
               </span>
             )}
+            <span
+              className={`text-xs font-semibold px-2 py-1 rounded-full ${
+                isOutOfStock
+                  ? "bg-red-100 text-red-700"
+                  : "bg-green-100 text-green-700"
+              }`}
+            >
+              {isOutOfStock ? "Out of stock" : `${stockLeft} in stock`}
+            </span>
           </div>
 
           <div>
@@ -70,9 +86,14 @@ const DetailedCard = () => {
           <div className="flex flex-col sm:flex-row gap-4 mt-4">
             <button
               onClick={handleAddToCart}
-              className="px-6 py-3 border border-black text-black rounded-full hover:bg-black hover:text-white transition"
+              disabled={isOutOfStock}
+              className={`px-6 py-3 rounded-full transition ${
+                isOutOfStock
+                  ? "border border-gray-300 bg-gray-100 text-gray-400 cursor-not-allowed"
+                  : "border border-black text-black hover:bg-black hover:text-white"
+              }`}
             >
-              Add to Cart
+              {isOutOfStock ? "Out of Stock" : "Add to Cart"}
             </button>
           </div>
 

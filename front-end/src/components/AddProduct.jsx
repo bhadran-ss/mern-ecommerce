@@ -10,6 +10,7 @@ const AddProduct = () => {
     description: "",
     category: "jeans",
     price: 0,
+    stock: 0,
     image: null,
   });
   const dispatch = useDispatch();
@@ -36,6 +37,7 @@ const AddProduct = () => {
       description: "",
       category: "jeans",
       price: 0,
+      stock: 0,
       image: null,
     });
   };
@@ -109,6 +111,23 @@ const AddProduct = () => {
               setNewProduct({
                 ...newproduct,
                 price: parseFloat(e.target.value),
+              })
+            }
+            required
+          />
+        </div>
+
+        <div>
+          <label className="block font-medium mb-1">Stock</label>
+          <input
+            type="number"
+            min="0"
+            className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500"
+            value={newproduct.stock}
+            onChange={(e) =>
+              setNewProduct({
+                ...newproduct,
+                stock: parseInt(e.target.value, 10) || 0,
               })
             }
             required

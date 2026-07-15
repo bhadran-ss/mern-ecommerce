@@ -31,149 +31,241 @@ const Header = () => {
     }
   };
   return (
-    <>
-      {/* Top Navigation Bar */}
-      <header className="w-full shadow-sm px-4 sm:px-6 lg:px-10 py-4 lg:py-6 sticky top-0 z-50 bg-white">
-        <div className="max-w-screen-xl mx-auto flex items-center justify-between">
-          {/* Logo */}
-          <div className="text-xl md:text-2xl font-bold">Vistyle</div>
-          {/* Search Bar */}
+    <header className="sticky top-0 z-50 w-full bg-white shadow-sm">
+      {/* Main Header */}
+      <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
+        {/* Logo */}
+        <button
+          onClick={() => navigate("/")}
+          className="text-xl font-bold md:text-2xl"
+        >
+          Vistyle
+        </button>
+
+        {/* Desktop Navigation / Search */}
+        <div className="hidden flex-1 justify-center lg:flex">
           {isSearchOpen ? (
-            <div className="absolute inset-x-0 top-0 bg-white p-4 shadow-md z-50">
+            <div className="flex w-full max-w-lg items-center gap-3 animate-in fade-in duration-200">
+              <BsSearch className="h-5 w-5 text-gray-400" />
+
               <input
-                type="text"
-                placeholder="Search..."
-                id="search"
                 ref={searchRef}
-                className="w-full border border-gray-300 rounded-full px-4 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500 md:max-w-md"
+                type="text"
+                autoFocus
+                placeholder="Search products..."
+                className="w-full border-b border-gray-300 bg-transparent py-2 outline-none transition-all focus:border-black"
                 onKeyDown={(e) => {
                   if (e.key === "Enter") {
                     handleSearch();
+                    setIsSearchOpen(false);
                   }
                 }}
               />
+
               <button
                 onClick={() => setIsSearchOpen(false)}
-                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700 focus:outline-none"
+                className="text-gray-500 transition hover:text-black"
               >
-                <XCircle size={24} />
+                <XCircle size={22} />
               </button>
             </div>
           ) : (
-            <nav className="hidden md:flex items-center space-x-5 lg:space-x-8 px-4 py-2">
+            <nav className="flex items-center gap-8">
               {navItems.map((item) => (
-                <a
+                <button
                   key={item.label}
                   onClick={() => {
-                    setActiveLink(item.label);
                     navigate(item.path);
+
                     if (item.label === "Shop") {
                       dispatch(clearSearchResult());
                     }
                   }}
-                  className={`font-medium relative ${
-                    activeLink === item.label
-                      ? "after:absolute after:bottom-[-4px] after:left-0 after:w-full after:h-[2px] after:bg-white after:opacity-100 text-black"
-                      : "text-black"
-                  }`}
+                  className="group relative font-medium transition"
                 >
                   {item.label}
-                </a>
+
+                  <span className="absolute -bottom-1 left-0 h-[2px] w-full origin-left scale-x-0 bg-black transition-transform duration-300 group-hover:scale-x-100" />
+                </button>
               ))}
             </nav>
           )}
-          {/* Mobile Nav */}
-          {isMobileOpen && (
-            <div className="absolute left-0 top-full w-full bg-white shadow-lg md:hidden">
-              <nav className="flex flex-col items-start space-y-4 p-4">
-                {navItems.map((item) => (
-                  <a
-                    key={item.label}
-                    href={item.path}
-                    onClick={() => {
-                      setActiveLink(item.label);
-                      setIsMobileOpen(false);
-                      navigate(item.path);
-                      if (item.label === "Shop") {
-                        dispatch(clearSearchResult());
-                      }
-                    }}
-                    className={`relative font-medium text-black after:content-[''] after:absolute after:bottom-[-4px] after:left-0 after:h-[2px] after:w-full after:bg-black after:transition-transform after:duration-300 after:scale-x-0 after:origin-left ${
-                      activeLink === item.label ? "after:scale-x-100" : ""
-                    }`}
-                  >
-                    {item.label}
-                  </a>
-                ))}
-              </nav>
+        </div>
+
+        {/* Right Side */}
+        <div className="flex items-center gap-4">
+          {/* Login / Logout */}
+          {user ? (
+            <button
+              onClick={() => dispatch(logoutUser())}
+              className="hidden text-sm font-medium hover:underline md:block"
+            >
+              Logout
+            </button>
+          ) : (
+            <div className="hidden items-center gap-2 md:flex">
+              <button onClick={() => navigate("/register")}>Register</button>
+              <span>/</span>
+              <button onClick={() => navigate("/login")}>Login</button>
             </div>
           )}
 
-          {/* User Actions */}
+          {/* Search */}
+          <button
+            aria-label="Search"
+            onClick={() => {
+              setIsSearchOpen((prev) => !prev);
+              setIsMobileOpen(false);
+            }}
+            className="transition duration-300 hover:scale-110"
+          >
+            <BsSearch className="h-5 w-5 text-gray-700 hover:text-black" />
+          </button>
 
-          <div className="flex items-center gap-5">
-            {user ? (
-              <div className="flex items-center space-x-1 text-gray-900 text-sm font-medium px-4 sm:px-0">
+          {/* Dashboard */}
+          {(user?.role === "admin" || user?.role === "seller") && (
+            <button
+              className="hidden text-sm font-medium md:block"
+              onClick={() =>
+                navigate(
+                  user.role === "admin" ? "/secret-panel" : "/seller-panel",
+                )
+              }
+            >
+              {user.role === "admin" ? "Admin" : "Seller"}
+            </button>
+          )}
+
+          {/* Cart */}
+          <button
+            aria-label="Cart"
+            className="relative"
+            onClick={() => navigate("/cart")}
+          >
+            <BsCartPlus className="h-5 w-5" />
+
+            {cart.length > 0 && (
+              <span className="absolute -right-2 -top-2 flex h-5 w-5 items-center justify-center rounded-full border bg-white text-xs">
+                {cart.length > 99 ? "99+" : cart.length}
+              </span>
+            )}
+          </button>
+
+          {/* Mobile Menu */}
+          <button
+            className="lg:hidden"
+            aria-label="Menu"
+            onClick={() => {
+              setIsMobileOpen(!isMobileOpen);
+              setIsSearchOpen(false);
+            }}
+          >
+            {isMobileOpen ? <X size={24} /> : <Menu size={24} />}
+          </button>
+        </div>
+      </div>
+
+      {/* Mobile Menu */}
+      {isMobileOpen && (
+        <div className="absolute left-0 top-full w-full border-t bg-white shadow-lg lg:hidden">
+          <nav className="flex flex-col">
+            {navItems.map((item) => (
+              <button
+                key={item.label}
+                onClick={() => {
+                  navigate(item.path);
+                  setIsMobileOpen(false);
+
+                  if (item.label === "Shop") {
+                    dispatch(clearSearchResult());
+                  }
+                }}
+                className="border-b px-6 py-4 text-left hover:bg-gray-100"
+              >
+                {item.label}
+              </button>
+            ))}
+
+            {!user && (
+              <>
                 <button
-                  onClick={() => dispatch(logoutUser())}
-                  className="hover:text-black hover:underline transition duration-150"
-                >
-                  Logout
-                </button>
-              </div>
-            ) : (
-              <div className="flex items-center space-x-1 text-gray-900 text-sm font-medium px-4 sm:px-0">
-                <button
-                  onClick={() => navigate("/register")}
-                  className="hover:text-black hover:underline transition duration-150"
-                >
-                  Register
-                </button>
-                <span className="text-gray-400">/</span>
-                <button
-                  onClick={() => navigate("/login")}
-                  className="hover:text-black hover:underline transition duration-150"
+                  onClick={() => {
+                    navigate("/login");
+                    setIsMobileOpen(false);
+                  }}
+                  className="border-b px-6 py-4 text-left hover:bg-gray-100"
                 >
                   Login
                 </button>
-              </div>
+
+                <button
+                  onClick={() => {
+                    navigate("/register");
+                    setIsMobileOpen(false);
+                  }}
+                  className="border-b px-6 py-4 text-left hover:bg-gray-100"
+                >
+                  Register
+                </button>
+              </>
             )}
-            {/* Icons */}
-            <BsSearch
-              className="w-5 h-5 cursor-pointer text-black"
-              onClick={() => setIsSearchOpen(!isSearchOpen)}
-            />
+
             {(user?.role === "admin" || user?.role === "seller") && (
               <button
-                onClick={() =>
+                onClick={() => {
                   navigate(
-                    user?.role === "admin" ? "/secret-panel" : "/seller-panel",
-                  )
-                }
-                className="hover:text-black hover:underline transition duration-150 text-sm font-medium px-4 sm:px-0"
+                    user.role === "admin" ? "/secret-panel" : "/seller-panel",
+                  );
+                  setIsMobileOpen(false);
+                }}
+                className="border-b px-6 py-4 text-left hover:bg-gray-100"
               >
-                {user?.role === "admin" ? "Admin" : "Seller"}
+                {user.role === "admin" ? "Admin Panel" : "Seller Panel"}
               </button>
             )}
-            <div className="relative" onClick={() => navigate("/cart")}>
-              <BsCartPlus className="w-5 h-5 cursor-pointer text-black" />
-              {cart.length > 0 && (
-                <span className="absolute -top-2 -right-2 w-5 h-5 text-xs font-semibold text-black bg-white border border-gray-400 rounded-full flex items-center justify-center">
-                  {cart.length}
-                </span>
-              )}
-            </div>
-            {/* Mobile Menu Button */}
+
+            {user && (
+              <button
+                onClick={() => {
+                  dispatch(logoutUser());
+                  setIsMobileOpen(false);
+                }}
+                className="px-6 py-4 text-left text-red-600 hover:bg-red-50"
+              >
+                Logout
+              </button>
+            )}
+          </nav>
+        </div>
+      )}
+      {/* Mobile Search */}
+      {isSearchOpen && (
+        <div className="border-t bg-white p-4 shadow-md lg:hidden">
+          <div className="flex items-center gap-2">
+            <input
+              ref={searchRef}
+              type="text"
+              autoFocus
+              placeholder="Search products..."
+              className="flex-1 rounded-full border px-4 py-2 outline-none focus:ring-2 focus:ring-black"
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  handleSearch();
+                  setIsSearchOpen(false);
+                }
+              }}
+            />
+
             <button
-              onClick={() => setIsMobileOpen(!isMobileOpen)}
-              className="md:hidden focus:outline-none text-black"
+              onClick={() => setIsSearchOpen(false)}
+              className="text-gray-500 hover:text-black"
             >
-              {isMobileOpen ? <X size={24} /> : <Menu size={24} />}
+              <XCircle size={22} />
             </button>
           </div>
         </div>
-      </header>
-    </>
+      )}
+    </header>
   );
 };
 

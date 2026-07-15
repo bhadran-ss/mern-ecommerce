@@ -39,23 +39,27 @@ const HomePage = () => {
       </div>
 
       {/* Features Section */}
-      <div className="grid md:grid-cols-3 gap-8 py-16 px-4 text-center">
-        <div>
-          <img src={delivery} alt="Free Shipping" className="mx-auto h-16 mb-4" />
+      <div className="grid grid-cols-1 gap-6 py-16 px-4 text-center sm:gap-8 md:grid-cols-3">
+        <div className="rounded-lg bg-white p-4 shadow-sm sm:p-6">
+          <img
+            src={delivery}
+            alt="Free Shipping"
+            className="mx-auto h-16 mb-4"
+          />
           <h3 className="text-xl font-semibold mb-2">Free shipping</h3>
           <p className="text-gray-600">
             Fusce urna quam, euismod sit amet mollis quis, vestibulum quis
             velit.
           </p>
         </div>
-        <div>
+        <div className="rounded-lg bg-white p-4 shadow-sm sm:p-6">
           <img src={coin} alt="Money Back" className="mx-auto h-16 mb-4" />
           <h3 className="text-xl font-semibold mb-2">100% Money back</h3>
           <p className="text-gray-600">
             Euismod sit amet mollis quis, vestibulum quis velit.
           </p>
         </div>
-        <div>
+        <div className="rounded-lg bg-white p-4 shadow-sm sm:p-6">
           <img src={chat} alt="Support" className="mx-auto h-16 mb-4" />
           <h3 className="text-xl font-semibold mb-2">Online support 24/7</h3>
           <p className="text-gray-600">

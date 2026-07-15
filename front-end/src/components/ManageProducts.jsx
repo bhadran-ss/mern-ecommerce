@@ -20,15 +20,17 @@ const ManageProducts = () => {
   }
 
   return (
-    <div className="max-w-6xl mx-auto p-6 bg-white rounded-xl shadow mt-10">
+    <div className="max-w-6xl mx-auto p-4 sm:p-6 bg-white rounded-xl shadow mt-10">
       <h1 className="text-2xl font-semibold mb-6 text-center">View Products</h1>
-      <div className="overflow-x-auto">
+
+      <div className="hidden md:block overflow-x-auto">
         <table className="min-w-full table-auto border border-gray-200">
           <thead className="bg-gray-100 text-left text-gray-600 uppercase text-sm">
             <tr>
               <th className="px-4 py-3">Title</th>
               <th className="px-4 py-3">Category</th>
               <th className="px-4 py-3">Price (₹)</th>
+              <th className="px-4 py-3">Stock</th>
               <th className="px-4 py-3">Image</th>
               <th className="px-4 py-3">Featured</th>
               <th className="px-4 py-3">Delete</th>
@@ -40,6 +42,7 @@ const ManageProducts = () => {
                 <td className="px-4 py-3">{product.name}</td>
                 <td className="px-4 py-3 capitalize">{product.category}</td>
                 <td className="px-4 py-3">₹ {product.price.toFixed(2)}</td>
+                <td className="px-4 py-3">{product.stock ?? 0}</td>
                 <td className="px-4 py-3">
                   <img
                     src={product.image}
@@ -71,6 +74,56 @@ const ManageProducts = () => {
             ))}
           </tbody>
         </table>
+      </div>
+
+      <div className="grid gap-4 md:hidden">
+        {products.map((product) => (
+          <div
+            key={product._id}
+            className="rounded-lg border border-gray-200 p-4 shadow-sm"
+          >
+            <div className="flex items-center gap-3">
+              <img
+                src={product.image}
+                alt={product.title}
+                className="w-16 h-16 object-cover rounded"
+              />
+              <div className="min-w-0 flex-1">
+                <h3 className="text-sm font-semibold text-gray-800">
+                  {product.name}
+                </h3>
+                <p className="text-xs text-gray-600 capitalize">
+                  {product.category}
+                </p>
+                <p className="text-xs text-gray-700">
+                  ₹ {product.price.toFixed(2)}
+                </p>
+                <p className="text-xs text-gray-700">
+                  Stock: {product.stock ?? 0}
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-3 flex items-center justify-between gap-2">
+              <button
+                onClick={() => dispatch(toggleFeatured(product._id))}
+                className={`p-2 rounded-full transition ${
+                  product.isFeatured
+                    ? "bg-yellow-400 hover:bg-yellow-500"
+                    : "bg-gray-300 hover:bg-gray-400"
+                }`}
+              >
+                <Star size={18} className="text-white" />
+              </button>
+              <button
+                onClick={() => dispatch(deleteProductThunk(product._id))}
+                className="p-2 bg-red-500 hover:bg-red-600 text-white rounded-full transition"
+              >
+                <Trash size={18} />
+              </button>
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   );

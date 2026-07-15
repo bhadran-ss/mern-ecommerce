@@ -10,9 +10,11 @@ const TopPicks = () => {
   return (
     <div className="px-6 md:px-20 py-16 bg-white text-center">
       <h1 className="text-3xl md:text-4xl font-semibold mb-10">TOP PICKS</h1>
-      <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+      <div className="grid gap-3 sm:gap-6 grid-cols-2 md:grid-cols-3 xl:grid-cols-4">
         {featuredProducts?.map((product) => (
-          <Card key={product._id} product={product} />
+          <div key={product._id} className="w-full min-w-0">
+            <Card product={product} />
+          </div>
         ))}
       </div>
 

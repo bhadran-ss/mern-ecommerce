@@ -9,49 +9,68 @@ const Card = ({ product }) => {
   const { user } = useSelector((state) => state.auth);
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  const stockLeft = Number(product.stock ?? 0);
+  const isOutOfStock = stockLeft <= 0;
 
   const handleAddToCart = () => {
     if (!user) {
       toast.error("Please log in to add items to your cart.", { id: "login" });
       return;
-    } else {
-      dispatch(addToCartThunk(product));
     }
+
+    if (isOutOfStock) {
+      toast.error("This product is currently out of stock.", { id: "stock" });
+      return;
+    }
+
+    dispatch(addToCartThunk(product));
   };
+
   const handleCardClick = () => {
     navigate(`/product/${product._id}`);
   };
 
   return (
-    <div className="bg-white rounded-lg shadow hover:shadow-lg transition duration-300 p-4 cursor-pointer h-[420px] flex flex-col justify-between items-center">
-      {/* Product Image */}
+    <div className="bg-white rounded-lg shadow hover:shadow-lg transition duration-300 p-3 sm:p-4 cursor-pointer flex w-full min-w-0 flex-col justify-between items-center min-h-[360px] sm:min-h-[420px]">
       <div
         onClick={handleCardClick}
-        className="aspect-square overflow-hidden rounded-md hover:scale-105 transition-transform duration-300 mb-4"
+        className="w-full aspect-square overflow-hidden rounded-md hover:scale-[1.02] transition-transform duration-300 mb-3 sm:mb-4"
       >
         <img
           src={product.image}
           alt={product.name}
-          className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
+          className="w-full h-full object-cover transition-transform duration-300"
         />
       </div>
 
-      {/* Product Details */}
-      <div className="text-center mt-4">
-        <h1 className="text-lg font-medium text-gray-800 mb-1 line-clamp-2">
+      <div className="text-center mt-2 w-full">
+        <h3 className="text-lg font-medium text-gray-800 mb-1 line-clamp-2">
           {product.name}
-        </h1>
+        </h3>
         <p className="text-gray-600">Rs {product.price}</p>
+        <p
+          className={`mt-2 text-xs font-semibold ${
+            isOutOfStock ? "text-red-600" : "text-green-600"
+          }`}
+        >
+          {isOutOfStock
+            ? "Out of stock"
+            : `${stockLeft} item${stockLeft === 1 ? "" : "s"} left`}
+        </p>
       </div>
 
-      {/* Add to Cart Button */}
-      <div className="mt-4 flex justify-center">
+      <div className="mt-4 flex justify-center w-full">
         <button
           onClick={handleAddToCart}
-          className="flex items-center gap-2 px-4 py-2 text-sm border border-gray-800 text-gray-800 rounded-full hover:bg-gray-800 hover:text-white transition"
+          disabled={isOutOfStock}
+          className={`flex w-full max-w-[220px] items-center justify-center gap-2 px-4 py-2 text-sm rounded-full transition ${
+            isOutOfStock
+              ? "border border-gray-300 bg-gray-100 text-gray-400 cursor-not-allowed"
+              : "border border-gray-800 text-gray-800 hover:bg-gray-800 hover:text-white"
+          }`}
         >
           <BiCartAdd size={18} />
-          ADD TO CART
+          {isOutOfStock ? "OUT OF STOCK" : "ADD TO CART"}
         </button>
       </div>
     </div>

@@ -4,27 +4,41 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "dev": "nodemon back-end/server.js",
+    "dev": "concurrently --kill-others-on-fail --names server,client \"npm:dev:server\" \"npm:dev:client\"",
+    "dev:server": "nodemon back-end/server.js",
+    "dev:client": "npm run dev --prefix front-end",
     "start": "node back-end/server.js",
     "seed": "node back-end/seedProducts.js",
-    "build": "npm install && npm install --prefix front-end && npm run build --prefix front-end"
+    "install:all": "npm ci && npm ci --prefix front-end",
+    "lint": "npm run lint:server && npm run lint:client",
+    "lint:server": "eslint back-end",
+    "lint:client": "npm run lint --prefix front-end",
+    "test": "node --test tests/project-baseline.test.js",
+    "build": "npm run build:server && npm run build:client",
+    "build:server": "node --check back-end/server.js",
+    "build:client": "npm run build --prefix front-end"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "type": "module",
   "dependencies": {
-    "bcryptjs": "^3.0.2",
-    "cloudinary": "^2.7.0",
+    "bcryptjs": "^3.0.3",
+    "cloudinary": "^2.11.0",
     "cookie-parser": "^1.4.7",
-    "cors": "^2.8.5",
-    "dotenv": "^17.2.0",
-    "express": "^5.1.0",
-    "ioredis": "^5.6.1",
-    "jose": "^6.2.3",
-    "jsonwebtoken": "^9.0.2",
-    "mongoose": "^8.16.3",
-    "nodemon": "^3.1.14",
-    "stripe": "^18.3.0"
+    "cors": "^2.8.6",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "ioredis": "^5.11.1",
+    "jose": "^6.2.10",
+    "mongoose": "^8.24.4",
+    "stripe": "^18.5.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "concurrently": "^9.2.1",
+    "eslint": "^10.9.1",
+    "globals": "^17.12.0",
+    "nodemon": "^3.1.14"
   }
 }

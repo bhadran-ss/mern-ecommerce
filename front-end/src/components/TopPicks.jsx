@@ -14,6 +14,7 @@ const TopPicks = () => {
         {featuredProducts?.map((product) => (
           <div key={product._id} className="w-full min-w-0">
             <Card product={product} />
+            
           </div>
         ))}
       </div>

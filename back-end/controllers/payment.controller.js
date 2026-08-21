@@ -1,13 +1,13 @@
-import dotenv from "dotenv";
-import stripe from "../lib/stripe.js";
+import { getEnvironment } from "../config/env.js";
+import { getStripeClient } from "../lib/stripe.js";
 import Order from "../models/order.model.js";
 import Product from "../models/product.model.js";
+import { AppError } from "../utils/app-error.js";
 
-dotenv.config({ quiet: true });
 const createCheckoutSession = async (req, res) => {
   const { cart } = req.body;
   if (!cart || cart.length === 0) {
-    return res.status(400).json({ error: "Cart is empty" });
+    throw new AppError(400, "CART_EMPTY", "Cart is empty.");
   }
 
   const productIds = cart.map((item) => item._id || item.productId);
@@ -19,105 +19,94 @@ const createCheckoutSession = async (req, res) => {
         productItem._id.toString() === (item._id || item.productId).toString(),
     );
     if (!product) {
-      return res.status(400).json({ error: `Product not found: ${item.name}` });
+      throw new AppError(400, "PRODUCT_NOT_FOUND", "A cart product was not found.");
     }
     if (item.quantity > product.stock) {
-      return res.status(400).json({
-        error: `Not enough stock for ${product.name}. Available: ${product.stock}`,
-      });
+      throw new AppError(
+        400,
+        "INSUFFICIENT_STOCK",
+        `Not enough stock for ${product.name}. Available: ${product.stock}`,
+      );
     }
   }
 
-  try {
-    const session = await stripe.checkout.sessions.create({
-      payment_method_types: ["card"],
-      mode: "payment",
-      line_items: cart.map((item) => ({
-        price_data: {
-          currency: "inr",
-          product_data: {
-            name: item.name,
-            images: [item.image],
-          },
-          unit_amount: item.price * 100,
-        },
-        quantity: item.quantity,
-      })),
-      success_url: `${process.env.CLIENT_URL}/purchase-success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${process.env.CLIENT_URL}/purchase-cancel`,
-      metadata: {
-        userId: req.user ? req.user._id.toString() : "guest",
-        cartItems: JSON.stringify(
-          cart.map((item) => ({
-            id: item._id || item.productId,
-            qty: item.quantity,
-          })),
-        ),
+  const clientUrl = getEnvironment().clientUrl;
+  const session = await getStripeClient().checkout.sessions.create({
+    payment_method_types: ["card"],
+    mode: "payment",
+    line_items: cart.map((item) => ({
+      price_data: {
+        currency: "inr",
+        product_data: { name: item.name, images: [item.image] },
+        unit_amount: item.price * 100,
       },
-    });
+      quantity: item.quantity,
+    })),
+    success_url: `${clientUrl}/purchase-success?session_id={CHECKOUT_SESSION_ID}`,
+    cancel_url: `${clientUrl}/purchase-cancel`,
+    metadata: {
+      userId: req.user ? req.user._id.toString() : "guest",
+      cartItems: JSON.stringify(
+        cart.map((item) => ({
+          id: item._id || item.productId,
+          qty: item.quantity,
+        })),
+      ),
+    },
+  });
 
-    res.status(200).json({ id: session.id });
-  } catch (error) {
-    console.error("Stripe error:", error);
-    res
-      .status(500)
-      .json({ error: error.message || "Failed to create session" });
-  }
+  res.status(200).json({ id: session.id });
 };
+
 const checkoutSucess = async (req, res) => {
   const { sessionId } = req.query;
   if (!sessionId) {
-    return res.status(400).json({ error: "Session ID is required" });
+    throw new AppError(400, "SESSION_ID_REQUIRED", "Session ID is required.");
   }
+
   const existingOrder = await Order.findOne({ stripeSessionId: sessionId });
   if (existingOrder) {
     return res.status(200).json({
       message: "Order already exists",
       orderId: existingOrder._id,
     });
-  } else {
-    try {
-      const session = await stripe.checkout.sessions.retrieve(sessionId);
-      if (session.payment_status === "paid") {
-        const products = JSON.parse(session.metadata.cartItems || "[]");
+  }
 
-        for (const item of products) {
-          const updateResult = await Product.updateOne(
-            {
-              _id: item.id,
-              stock: { $gte: item.qty },
-            },
-            { $inc: { stock: -item.qty } },
-          );
-          if (updateResult.modifiedCount === 0) {
-            return res.status(400).json({
-              error: `Unable to decrement stock for product ${item.id}. It may be out of stock.`,
-            });
-          }
-        }
+  const session = await getStripeClient().checkout.sessions.retrieve(sessionId);
+  if (session.payment_status !== "paid") {
+    throw new AppError(400, "PAYMENT_NOT_COMPLETED", "Payment not completed.");
+  }
 
-        const newOrder = Order({
-          user: session.metadata.userId || null,
-          products: products.map((item) => ({
-            product: item.id,
-            quantity: item.qty,
-          })),
-          totalAmount: session.amount_total / 100,
-          status: "Completed",
-          stripeSessionId: session.id,
-        });
-        await newOrder.save();
-        res.status(200).json({
-          message: "Order created successfully",
-          orderId: newOrder._id,
-        });
-      } else {
-        res.status(400).json({ error: "Payment not completed" });
-      }
-    } catch (error) {
-      console.error(error);
-      res.status(500).json({ error: "Failed to retrieve session" });
+  const products = JSON.parse(session.metadata.cartItems || "[]");
+  for (const item of products) {
+    const updateResult = await Product.updateOne(
+      { _id: item.id, stock: { $gte: item.qty } },
+      { $inc: { stock: -item.qty } },
+    );
+    if (updateResult.modifiedCount === 0) {
+      throw new AppError(
+        400,
+        "INVENTORY_UPDATE_FAILED",
+        `Unable to decrement stock for product ${item.id}.`,
+      );
     }
   }
+
+  const newOrder = Order({
+    user: session.metadata.userId || null,
+    products: products.map((item) => ({
+      product: item.id,
+      quantity: item.qty,
+    })),
+    totalAmount: session.amount_total / 100,
+    status: "Completed",
+    stripeSessionId: session.id,
+  });
+  await newOrder.save();
+  res.status(200).json({
+    message: "Order created successfully",
+    orderId: newOrder._id,
+  });
 };
+
 export { createCheckoutSession, checkoutSucess };

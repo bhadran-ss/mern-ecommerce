@@ -1,8 +1,15 @@
 import Stripe from "stripe";
-import dotenv from "dotenv";
 
-dotenv.config({ quiet: true });
+let stripeClient;
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+export const initializeStripe = (secretKey) => {
+  stripeClient = new Stripe(secretKey);
+  return stripeClient;
+};
 
-export default stripe;
+export const getStripeClient = () => {
+  if (!stripeClient) {
+    throw new Error("Stripe has not been initialized.");
+  }
+  return stripeClient;
+};

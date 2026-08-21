@@ -3,25 +3,24 @@ import { Trash } from "lucide-react";
 import { useDispatch, useSelector } from "react-redux";
 import toast from "react-hot-toast";
 import { removeFromCart, updateQuantity } from "../store/slices/cartSlice";
-import { loadStripe } from "@stripe/stripe-js";
 import axios from "../lib/axios";
+import { getStripeClient } from "../lib/stripe";
 
 const CartPage = () => {
   const dispatch = useDispatch();
   const { cart, total } = useSelector((state) => state.cart);
-  const stripePromise = loadStripe(
-    "pk_test_51RaVaRQq8PvEmXQmDmqqWfC4rpLQm6e0FTznkKGW7Tjx536Wl96Rm2yWeSrGAnppt2bQvFmeViG3fk4SITeqGVLl00xSwG4m37",
-  );
   const handlePayment = async () => {
-    const stripe = await stripePromise;
-    const response = await axios.post("/payment/checkout", {
-      cart,
-    });
-    const sessionId = response.data.id;
-    console.log("response", response.data);
-    const result = await stripe.redirectToCheckout({ sessionId });
-    if (result.error) {
-      console.error("Error", result.error);
+    try {
+      const stripe = await getStripeClient();
+      const response = await axios.post("/payment/checkout", { cart });
+      const result = await stripe.redirectToCheckout({
+        sessionId: response.data.id,
+      });
+      if (result.error) {
+        toast.error(result.error.message || "Unable to open test checkout.");
+      }
+    } catch (error) {
+      toast.error(error.message || "Test checkout is not configured.");
     }
   };
   return (

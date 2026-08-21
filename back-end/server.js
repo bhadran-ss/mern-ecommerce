@@ -1,54 +1,72 @@
-import path from "path";
-import { fileURLToPath } from "url";
-
-import express from "express";
 import dotenv from "dotenv";
-dotenv.config();
-import cookieParser from "cookie-parser";
-import cors from "cors";
 
-import "./lib/db.js";
-import authRouter from "./route/auth.router.js";
-import productRouter from "./route/product.router.js";
-import cartRouter from "./route/cart.router.js";
-import PaymentRouter from "./route/payment.router.js";
+import { createApp } from "./app.js";
+import { initializeDependencies } from "./bootstrap.js";
+import { configureCloudinary } from "./config/cloudinary.js";
+import { initializeEnvironment } from "./config/env.js";
+import {
+  connectToDatabase,
+  disconnectFromDatabase,
+  getDatabaseReadiness,
+} from "./lib/db.js";
+import {
+  connectToRedis,
+  disconnectFromRedis,
+  getRedisReadiness,
+} from "./lib/Redis.js";
+import { initializeStripe } from "./lib/stripe.js";
+import { logger } from "./utils/logger.js";
+import { createShutdown, registerShutdownHandlers } from "./utils/shutdown.js";
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+dotenv.config({ quiet: true });
 
-const app = express();
-const PORT = process.env.PORT || 5000;
-
-// Middleware
-app.use(cookieParser());
-app.use(express.json({ limit: "10mb" }));
-app.use(
-  cors({
-    origin: process.env.CLIENT_URL || "*", // Use env for flexibility
-    credentials: true,
-  })
-);
-
-// API Routes
-app.use("/api/auth", authRouter);
-app.use("/api/products", productRouter);
-app.use("/api/cart", cartRouter);
-app.use("/api/payment", PaymentRouter);
-
-// Serve frontend in production
-if (process.env.NODE_ENV === "production") {
-  const frontendPath = path.join(__dirname, "../front-end/dist");
-  app.use(express.static(frontendPath));
- app.get(/.*/, (req, res) => {
-  res.sendFile(path.join(frontendPath, "index.html"));
-});
-
-} else {
-  app.get("/", (req, res) => {
-    res.send("Server is working (development mode)");
+const listen = (app, port) =>
+  new Promise((resolve, reject) => {
+    const server = app.listen(port);
+    server.once("listening", () => resolve(server));
+    server.once("error", reject);
   });
-}
 
-app.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
+const startServer = async () => {
+  const config = initializeEnvironment(process.env);
+  await initializeDependencies({
+    config,
+    logger,
+    configureCloudinary,
+    initializeStripe,
+    connectDatabase: connectToDatabase,
+    connectRedis: connectToRedis,
+  });
+
+  const getReadiness = () => {
+    const database = getDatabaseReadiness();
+    const redis = getRedisReadiness();
+    return {
+      ready: database.ready && redis.ready,
+      services: { database, redis },
+    };
+  };
+
+  const app = createApp({ config, logger, getReadiness });
+  const server = await listen(app, config.port);
+  logger.info("HTTP server started", {
+    port: config.port,
+    environment: config.nodeEnv,
+  });
+
+  const shutdown = createShutdown({
+    server,
+    logger,
+    disconnectDatabase: disconnectFromDatabase,
+    disconnectRedis: disconnectFromRedis,
+  });
+  registerShutdownHandlers({ shutdown, logger });
+
+  return { app, server, shutdown };
+};
+
+startServer().catch(async (error) => {
+  logger.error("Application startup failed", { error });
+  await Promise.allSettled([disconnectFromDatabase(), disconnectFromRedis()]);
+  process.exitCode = 1;
 });

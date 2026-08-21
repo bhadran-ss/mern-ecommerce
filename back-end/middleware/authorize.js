@@ -1,17 +1,21 @@
-export const authorize = (...roles) => {
-  return (req, res, next) => {
-    if (!req.user) {
-      return res.status(401).json({ message: "Unauthorized. No token provided." });
-    }
+import { AppError } from "../utils/app-error.js";
 
-    if (roles.length === 0) {
-      return next();
-    }
+export const authorize = (...roles) => (req, _res, next) => {
+  if (!req.user) {
+    return next(
+      new AppError(401, "AUTHENTICATION_REQUIRED", "Authentication is required."),
+    );
+  }
 
-    if (req.user.role === "admin" || roles.includes(req.user.role)) {
-      return next();
-    }
+  if (
+    roles.length === 0 ||
+    req.user.role === "admin" ||
+    roles.includes(req.user.role)
+  ) {
+    return next();
+  }
 
-    return res.status(403).json({ message: "Forbidden. Insufficient permissions." });
-  };
+  return next(
+    new AppError(403, "INSUFFICIENT_PERMISSIONS", "Insufficient permissions."),
+  );
 };

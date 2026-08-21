@@ -1,9 +1,20 @@
-import mongoose from 'mongoose';
-import dotenv from 'dotenv';
-dotenv.config();
+import mongoose from "mongoose";
 
-mongoose.connect(process.env.MONGO_URI).then(() => {
-    console.log("Connection created in db...");
-}).catch(err=> {
-    console.log("Connection not created..", err);
-})
+export const connectToDatabase = async (mongoUri) => {
+  await mongoose.connect(mongoUri);
+  return mongoose.connection;
+};
+
+export const disconnectFromDatabase = async () => {
+  if (mongoose.connection.readyState !== 0) {
+    await mongoose.disconnect();
+  }
+};
+
+export const getDatabaseReadiness = () => ({
+  ready: mongoose.connection.readyState === 1,
+  status:
+    ["disconnected", "connected", "connecting", "disconnecting"][
+      mongoose.connection.readyState
+    ] || "unknown",
+});

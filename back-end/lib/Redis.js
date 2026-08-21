@@ -1,18 +1,43 @@
 import Redis from "ioredis";
-import dotenv from "dotenv";
+import { logger } from "../utils/logger.js";
 
-dotenv.config({ quiet: true });
+let redisClient;
 
-if (!process.env.UPSTASH_REDIS_URL) {
-  throw new Error("UPSTASH_REDIS_URL is missing in the .env file");
-}
+export const connectToRedis = async (redisUrl) => {
+  redisClient = new Redis(redisUrl, {
+    lazyConnect: true,
+    connectTimeout: 10_000,
+    enableReadyCheck: true,
+    maxRetriesPerRequest: 1,
+    retryStrategy: (attempt) =>
+      attempt <= 3 ? Math.min(attempt * 250, 1000) : null,
+  });
+  redisClient.on("error", (error) => {
+    logger.error("Redis client error", { error });
+  });
 
-const redis = new Redis(process.env.UPSTASH_REDIS_URL, {
-  maxRetriesPerRequest: null,
-  enableReadyCheck: false,
+  await redisClient.connect();
+  return redisClient;
+};
+
+export const getRedisClient = () => {
+  if (!redisClient) {
+    throw new Error("Redis has not been initialized.");
+  }
+  return redisClient;
+};
+
+export const disconnectFromRedis = async () => {
+  if (!redisClient) return;
+
+  const client = redisClient;
+  redisClient = undefined;
+  if (client.status !== "end") {
+    await client.quit();
+  }
+};
+
+export const getRedisReadiness = () => ({
+  ready: redisClient?.status === "ready",
+  status: redisClient?.status || "not_initialized",
 });
-
-redis.on("ready", () => console.log("✅ Redis ready"));
-redis.on("error", (err) => console.error("❌ Redis:", err));
-
-export default redis;

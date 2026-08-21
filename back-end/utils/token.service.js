@@ -1,13 +1,6 @@
 import * as jose from "jose";
-import dotenv from "dotenv";
 import { createHash, randomUUID } from "crypto";
-
-dotenv.config({ quiet: true });
-
-const ACCESS_TOKEN_SECRET = process.env.JWE_SECRET;
-const REFRESH_TOKEN_SECRET = process.env.JWE_REFRESH_SECRET;
-const ACCESS_TOKEN_EXPIRATION = process.env.JWE_ACCESS_EXPIRATION || "15m";
-const REFRESH_TOKEN_EXPIRATION = process.env.JWE_REFRESH_EXPIRATION || "7d";
+import { getEnvironment } from "../config/env.js";
 
 const toSeconds = (duration) => {
   const source = String(duration).trim();
@@ -70,39 +63,44 @@ const decryptPayload = async (token, secret) => {
 };
 
 export const createAccessToken = async (user) => {
-  const secret = getSecretKey(ACCESS_TOKEN_SECRET, "JWE_SECRET");
+  const config = getEnvironment();
+  const secret = getSecretKey(config.jweSecret, "JWE_SECRET");
   const now = Math.floor(Date.now() / 1000);
   const payload = {
     sub: user._id?.toString(),
     role: user.role || "customer",
     sid: randomUUID(),
     iat: now,
-    exp: now + toSeconds(ACCESS_TOKEN_EXPIRATION),
+    exp: now + toSeconds(config.jweAccessExpiration),
   };
 
   return encryptPayload(payload, secret);
 };
 
 export const createRefreshToken = async (user) => {
-  const secret = getSecretKey(REFRESH_TOKEN_SECRET, "JWE_REFRESH_SECRET");
+  const config = getEnvironment();
+  const secret = getSecretKey(config.jweRefreshSecret, "JWE_REFRESH_SECRET");
   const now = Math.floor(Date.now() / 1000);
   const payload = {
     sub: user._id?.toString(),
     role: user.role || "customer",
     sid: randomUUID(),
     iat: now,
-    exp: now + toSeconds(REFRESH_TOKEN_EXPIRATION),
+    exp: now + toSeconds(config.jweRefreshExpiration),
   };
 
   return encryptPayload(payload, secret);
 };
 
 export const decryptAccessToken = async (token) => {
-  const secret = getSecretKey(ACCESS_TOKEN_SECRET, "JWE_SECRET");
+  const secret = getSecretKey(getEnvironment().jweSecret, "JWE_SECRET");
   return decryptPayload(token, secret);
 };
 
 export const decryptRefreshToken = async (token) => {
-  const secret = getSecretKey(REFRESH_TOKEN_SECRET, "JWE_REFRESH_SECRET");
+  const secret = getSecretKey(
+    getEnvironment().jweRefreshSecret,
+    "JWE_REFRESH_SECRET",
+  );
   return decryptPayload(token, secret);
 };

@@ -1,23 +1,21 @@
-import dotenv from "dotenv";
+import { getEnvironment } from "../config/env.js";
 
-dotenv.config({ quiet: true });
-
-const COOKIE_OPTIONS = {
+const getCookieOptions = () => ({
   httpOnly: true,
-  secure: process.env.NODE_ENV === "production",
+  secure: getEnvironment().nodeEnv === "production",
   sameSite: "strict",
   path: "/",
-};
+});
 
-const ACCESS_COOKIE_OPTIONS = {
-  ...COOKIE_OPTIONS,
-  maxAge: 15 * 60 * 1000, // 15 minutes
-};
+const getAccessCookieOptions = () => ({
+  ...getCookieOptions(),
+  maxAge: 15 * 60 * 1000,
+});
 
-const REFRESH_COOKIE_OPTIONS = {
-  ...COOKIE_OPTIONS,
-  maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
-};
+const getRefreshCookieOptions = () => ({
+  ...getCookieOptions(),
+  maxAge: 7 * 24 * 60 * 60 * 1000,
+});
 
 export const getSessionCookies = (req) => ({
   accessToken: req.cookies?.accessToken,
@@ -25,11 +23,11 @@ export const getSessionCookies = (req) => ({
 });
 
 export const setAccessCookie = (res, accessToken) => {
-  res.cookie("accessToken", accessToken, ACCESS_COOKIE_OPTIONS);
+  res.cookie("accessToken", accessToken, getAccessCookieOptions());
 };
 
 export const setRefreshCookie = (res, refreshToken) => {
-  res.cookie("refreshToken", refreshToken, REFRESH_COOKIE_OPTIONS);
+  res.cookie("refreshToken", refreshToken, getRefreshCookieOptions());
 };
 
 export const setSessionCookies = (res, accessToken, refreshToken) => {
@@ -38,6 +36,6 @@ export const setSessionCookies = (res, accessToken, refreshToken) => {
 };
 
 export const clearSessionCookies = (res) => {
-  res.clearCookie("accessToken", ACCESS_COOKIE_OPTIONS);
-  res.clearCookie("refreshToken", REFRESH_COOKIE_OPTIONS);
+  res.clearCookie("accessToken", getAccessCookieOptions());
+  res.clearCookie("refreshToken", getRefreshCookieOptions());
 };

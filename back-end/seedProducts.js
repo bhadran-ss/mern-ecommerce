@@ -1,10 +1,16 @@
 import dotenv from "dotenv";
 
-import "./lib/db.js";
+import { initializeEnvironment } from "./config/env.js";
+import {
+  connectToDatabase,
+  disconnectFromDatabase,
+} from "./lib/db.js";
 import Product from "./models/product.model.js";
 import User from "./models/user.model.js";
+import { logger } from "./utils/logger.js";
 
-dotenv.config({ silent: true });
+dotenv.config({ quiet: true });
+const config = initializeEnvironment(process.env);
 
 const sampleProducts = [
   {
@@ -354,7 +360,7 @@ const createSeller = async () => {
       role: "seller",
     });
     await seller.save();
-    console.log("Created seller user:", sellerEmail);
+    logger.info("Created demonstration seller user", { email: sellerEmail });
   }
   return seller;
 };
@@ -365,10 +371,8 @@ const seedProducts = async () => {
 
     const existingCount = await Product.countDocuments();
     if (existingCount >= sampleProducts.length) {
-      console.log(
-        `Database already contains ${existingCount} products. Seed skipped.`,
-      );
-      process.exit(0);
+      logger.info("Product seed skipped", { existingCount });
+      return;
     }
 
     await Product.deleteMany({});
@@ -377,12 +381,18 @@ const seedProducts = async () => {
       sellerId: seller._id,
     }));
     await Product.create(productDocs);
-    console.log(`Seeded ${productDocs.length} products successfully.`);
-    process.exit(0);
+    logger.info("Demonstration products seeded", { count: productDocs.length });
   } catch (error) {
-    console.error("Seed failed:", error);
-    process.exit(1);
+    logger.error("Product seed failed", { error });
+    process.exitCode = 1;
+  } finally {
+    await disconnectFromDatabase();
   }
 };
 
-seedProducts();
+connectToDatabase(config.mongoUri)
+  .then(seedProducts)
+  .catch((error) => {
+    logger.error("Product seed startup failed", { error });
+    process.exitCode = 1;
+  });

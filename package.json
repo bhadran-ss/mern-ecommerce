@@ -13,7 +13,7 @@
     "lint": "npm run lint:server && npm run lint:client",
     "lint:server": "eslint back-end",
     "lint:client": "npm run lint --prefix front-end",
-    "test": "node --test tests/project-baseline.test.js",
+    "test": "node --test",
     "build": "npm run build:server && npm run build:client",
     "build:server": "node --check back-end/server.js",
     "build:client": "npm run build --prefix front-end"

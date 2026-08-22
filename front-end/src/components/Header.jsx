@@ -3,12 +3,12 @@ import { BsCartPlus, BsSearch } from "react-icons/bs";
 import { Menu, X, XCircle } from "lucide-react";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
+import toast from "react-hot-toast";
 import { logoutUser } from "../store/slices/authSlice";
 import { clearSearchResult } from "../store/slices/productSlice";
 
 const Header = () => {
   const [isMobileOpen, setIsMobileOpen] = useState(false);
-  const [activeLink, setActiveLink] = useState("Home");
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const searchRef = useRef();
   const navItems = [

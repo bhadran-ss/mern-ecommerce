@@ -15,7 +15,8 @@ const AllProducts = () => {
   const location = useLocation();
   const queryParams = new URLSearchParams(location.search);
   const searchQuery = queryParams.get("search");
-  const displayProducts = searchResult.length > 0 ? searchResult : products;
+  const isSearchActive = Boolean(searchQuery);
+  const displayProducts = isSearchActive ? searchResult : products;
 
   useEffect(() => {
     dispatch(fetchAllProducts());
@@ -39,7 +40,7 @@ const AllProducts = () => {
   return (
     <div className="max-w-7xl mx-auto p-4 sm:p-6">
       <h1 className="text-2xl sm:text-3xl font-bold mb-6 sm:mb-8 text-center">
-        {searchResult.length > 0 ? "SEARCH RESULT" : "ALL PRODUCTS"}
+        {isSearchActive ? "SEARCH RESULT" : "ALL PRODUCTS"}
       </h1>
 
       <div className="grid grid-cols-2 gap-3 sm:gap-6 md:grid-cols-3 xl:grid-cols-4">

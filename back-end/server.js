@@ -7,7 +7,7 @@ dotenv.config();
 import cookieParser from "cookie-parser";
 import cors from "cors";
 
-import "./lib/db.js";
+import connectDB from "./lib/db.js";
 import authRouter from "./route/auth.router.js";
 import productRouter from "./route/product.router.js";
 import cartRouter from "./route/cart.router.js";
@@ -49,6 +49,17 @@ if (process.env.NODE_ENV === "production") {
   });
 }
 
-app.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
-});
+const startServer = async () => {
+  try {
+    await connectDB();
+    console.log("Connection created in db...");
+    app.listen(PORT, () => {
+      console.log(`Server is running on port ${PORT}`);
+    });
+  } catch {
+    console.error("Database connection failed. Server was not started.");
+    process.exitCode = 1;
+  }
+};
+
+startServer();

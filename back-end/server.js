@@ -24,7 +24,7 @@ app.use(cookieParser());
 app.use(express.json({ limit: "10mb" }));
 app.use(
   cors({
-    origin: process.env.CLIENT_URL || "*", // Use env for flexibility
+    origin: process.env.CLIENT_URL || "http://localhost:5173",
     credentials: true,
   })
 );

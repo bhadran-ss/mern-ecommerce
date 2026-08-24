@@ -1,4 +1,3 @@
-import dotenv from "dotenv";
 import redis from "../lib/Redis.js";
 import User from "../models/user.model.js";
 import {
@@ -12,7 +11,6 @@ import {
   clearSessionCookies,
 } from "../utils/session.service.js";
 
-dotenv.config({ quiet: true });
 const signup = async (req, res) => {
   const { name, email, password, role } = req.body;
   if (!name || !email || !password) {

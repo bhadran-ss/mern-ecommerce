@@ -1,9 +1,8 @@
 import path from "path";
 import { fileURLToPath } from "url";
 
+import config from "./config/env.js";
 import express from "express";
-import dotenv from "dotenv";
-dotenv.config();
 import cookieParser from "cookie-parser";
 import cors from "cors";
 
@@ -17,14 +16,14 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
-const PORT = process.env.PORT || 5000;
+const PORT = config.PORT;
 
 // Middleware
 app.use(cookieParser());
 app.use(express.json({ limit: "10mb" }));
 app.use(
   cors({
-    origin: process.env.CLIENT_URL || "http://localhost:5173",
+    origin: config.CLIENT_URL,
     credentials: true,
   })
 );
@@ -36,7 +35,7 @@ app.use("/api/cart", cartRouter);
 app.use("/api/payment", PaymentRouter);
 
 // Serve frontend in production
-if (process.env.NODE_ENV === "production") {
+if (config.NODE_ENV === "production") {
   const frontendPath = path.join(__dirname, "../front-end/dist");
   app.use(express.static(frontendPath));
  app.get(/.*/, (req, res) => {

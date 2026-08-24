@@ -1,10 +1,8 @@
 import axios from "axios";
+import { appConfig } from "../config/env.js";
 
 const axiosInstance = axios.create({
-  baseURL:
-    import.meta.env.MODE === "development"
-      ? "http://localhost:5000/api"
-      : "/api",
+  baseURL: appConfig.apiUrl,
   withCredentials: true,
 });
 

@@ -5,23 +5,36 @@ import toast from "react-hot-toast";
 import { removeFromCart, updateQuantity } from "../store/slices/cartSlice";
 import { loadStripe } from "@stripe/stripe-js";
 import axios from "../lib/axios";
+import { appConfig } from "../config/env.js";
 
 const CartPage = () => {
   const dispatch = useDispatch();
   const { cart, total } = useSelector((state) => state.cart);
-  const stripePromise = loadStripe(
-    "pk_test_51RaVaRQq8PvEmXQmDmqqWfC4rpLQm6e0FTznkKGW7Tjx536Wl96Rm2yWeSrGAnppt2bQvFmeViG3fk4SITeqGVLl00xSwG4m37",
-  );
+  const stripePromise = appConfig.stripePublishableKey
+    ? loadStripe(appConfig.stripePublishableKey)
+    : null;
   const handlePayment = async () => {
-    const stripe = await stripePromise;
-    const response = await axios.post("/payment/checkout", {
-      cart,
-    });
-    const sessionId = response.data.id;
-    console.log("response", response.data);
-    const result = await stripe.redirectToCheckout({ sessionId });
-    if (result.error) {
-      console.error("Error", result.error);
+    if (!stripePromise) {
+      toast.error("Stripe test configuration is missing.");
+      return;
+    }
+
+    try {
+      const stripe = await stripePromise;
+      if (!stripe) {
+        throw new Error("Stripe.js could not be initialized.");
+      }
+      const response = await axios.post("/payment/checkout", { cart });
+      const result = await stripe.redirectToCheckout({
+        sessionId: response.data.id,
+      });
+      if (result.error) {
+        toast.error(result.error.message || "Unable to start demo checkout.");
+      }
+    } catch (error) {
+      toast.error(
+        error.response?.data?.error || "Unable to start demo checkout.",
+      );
     }
   };
   return (

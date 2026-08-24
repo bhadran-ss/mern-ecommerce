@@ -1,8 +1,6 @@
 import Stripe from "stripe";
-import dotenv from "dotenv";
+import config from "../config/env.js";
 
-dotenv.config({ quiet: true });
-
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+const stripe = new Stripe(config.STRIPE_SECRET_KEY);
 
 export default stripe;

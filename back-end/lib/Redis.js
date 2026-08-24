@@ -1,13 +1,7 @@
 import Redis from "ioredis";
-import dotenv from "dotenv";
+import config from "../config/env.js";
 
-dotenv.config({ quiet: true });
-
-if (!process.env.UPSTASH_REDIS_URL) {
-  throw new Error("UPSTASH_REDIS_URL is missing in the .env file");
-}
-
-const redis = new Redis(process.env.UPSTASH_REDIS_URL, {
+const redis = new Redis(config.UPSTASH_REDIS_URL, {
   maxRetriesPerRequest: null,
   enableReadyCheck: false,
 });

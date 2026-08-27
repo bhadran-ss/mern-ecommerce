@@ -1,7 +1,9 @@
+import { ApiError } from "./errors.js";
+
 export const authorize = (...roles) => {
   return (req, res, next) => {
     if (!req.user) {
-      return res.status(401).json({ message: "Unauthorized. No token provided." });
+      return next(new ApiError(401, "UNAUTHORIZED", "Authentication required."));
     }
 
     if (roles.length === 0) {
@@ -12,6 +14,6 @@ export const authorize = (...roles) => {
       return next();
     }
 
-    return res.status(403).json({ message: "Forbidden. Insufficient permissions." });
+    return next(new ApiError(403, "FORBIDDEN", "Insufficient permissions."));
   };
 };

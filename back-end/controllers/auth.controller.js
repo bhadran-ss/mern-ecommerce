@@ -10,16 +10,17 @@ import {
   setAccessCookie,
   clearSessionCookies,
 } from "../utils/session.service.js";
+import { ApiError } from "../middleware/errors.js";
 
-const signup = async (req, res) => {
+const signup = async (req, res, next) => {
   const { name, email, password, role } = req.body;
   if (!name || !email || !password) {
-    return res.status(400).json({ message: "All fields are required" });
+    return next(new ApiError(400, "VALIDATION_ERROR", "All fields are required."));
   }
 
   const existingUser = await User.findOne({ email });
   if (existingUser) {
-    return res.status(400).json({ message: "User already exists" });
+    return next(new ApiError(400, "USER_EXISTS", "User already exists."));
   }
 
   const safeRole = role === "seller" ? "seller" : "customer";
@@ -50,24 +51,24 @@ const signup = async (req, res) => {
       },
     });
   } catch (error) {
-    res.status(500).json({ message: "Error creating user", error });
+    return next(error);
   }
 };
-const login = async (req, res) => {
+const login = async (req, res, next) => {
   const { email, password } = req.body;
 
   if (!email || !password) {
-    return res.status(400).json({ message: "All fields are required" });
+    return next(new ApiError(400, "VALIDATION_ERROR", "All fields are required."));
   }
   try {
     const user = await User.findOne({ email });
     if (!user) {
-      return res.status(400).json({ message: "Invalid credentials" });
+      return next(new ApiError(400, "INVALID_CREDENTIALS", "Invalid credentials."));
     }
 
     const isMatch = await user.comparePassword(password);
     if (!isMatch) {
-      return res.status(400).json({ message: "Invalid credentials" });
+      return next(new ApiError(400, "INVALID_CREDENTIALS", "Invalid credentials."));
     }
 
     const accessToken = await createAccessToken(user);
@@ -93,13 +94,13 @@ const login = async (req, res) => {
       },
     });
   } catch (error) {
-    res.status(500).json({ message: "Error logging in", error });
+    return next(error);
   }
 };
-const logout = async (req, res) => {
+const logout = async (req, res, next) => {
   const refreshToken = req.cookies.refreshToken;
   if (!refreshToken) {
-    return res.status(400).json({ message: "No refresh token found" });
+    return next(new ApiError(400, "SESSION_MISSING", "No refresh token found."));
   }
 
   try {
@@ -108,28 +109,28 @@ const logout = async (req, res) => {
     clearSessionCookies(res);
     return res.status(200).json({ message: "User logged out successfully" });
   } catch (error) {
-    return res.status(500).json({ message: "Error logging out", error });
+    return next(error);
   }
 };
-const profile = (req, res) => {
+const profile = (req, res, next) => {
   const user = req.user;
   if (!user) {
-    return res.status(401).json({ message: "Unauthorized" });
+    return next(new ApiError(401, "UNAUTHORIZED", "Authentication required."));
   }
   res.status(200).json({ user });
 };
 
-const refreshAccessToken = async (req, res) => {
+const refreshAccessToken = async (req, res, next) => {
   try {
     const refreshToken = req.cookies.refreshToken;
     if (!refreshToken) {
-      return res.status(401).json({ message: "No refresh token provided" });
+      return next(new ApiError(401, "SESSION_MISSING", "No refresh token provided."));
     }
 
     const decoded = await decryptRefreshToken(refreshToken);
     const storedRefreshToken = await redis.get(`refresh_token:${decoded.sub}`);
     if (storedRefreshToken !== refreshToken) {
-      return res.status(401).json({ message: "Invalid refresh token" });
+      return next(new ApiError(401, "INVALID_SESSION", "Session is invalid or expired."));
     }
 
     const accessToken = await createAccessToken({
@@ -140,11 +141,7 @@ const refreshAccessToken = async (req, res) => {
 
     res.json({ message: "Token refreshed successfully" });
   } catch (error) {
-    console.log("Error in refreshToken controller", error.message);
-    if (error.name === "TokenExpiredError") {
-      return res.status(401).json({ message: "Refresh token expired" });
-    }
-    res.status(500).json({ message: "Server error", error: error.message });
+    return next(error);
   }
 };
 const authcontroller = {

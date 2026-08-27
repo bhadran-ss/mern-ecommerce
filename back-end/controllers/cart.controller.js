@@ -1,16 +1,14 @@
 import Product from "../models/product.model.js";
+import { ApiError } from "../middleware/errors.js";
 
-const addToCart = async (req, res) => {
+const addToCart = async (req, res, next) => {
   try {
     const { productId } = req.body;
     const user = req.user;
     const product = await Product.findById(productId);
 
     if (!product) {
-      return res.status(404).json({
-        success: false,
-        message: "Product not found.",
-      });
+      return next(new ApiError(404, "PRODUCT_NOT_FOUND", "Product not found."));
     }
 
     const existingItem = user.cartItems?.find(
@@ -19,10 +17,7 @@ const addToCart = async (req, res) => {
     const nextQuantity = existingItem ? existingItem.quantity + 1 : 1;
 
     if (nextQuantity > product.stock) {
-      return res.status(400).json({
-        success: false,
-        message: "Cannot add more than available stock.",
-      });
+      return next(new ApiError(400, "INSUFFICIENT_STOCK", "Cannot add more than available stock."));
     }
 
     if (existingItem) {
@@ -37,16 +32,11 @@ const addToCart = async (req, res) => {
       message: existingItem ? "Quantity increased." : "Product added to cart.",
     });
   } catch (error) {
-    console.error("Error adding to cart:", error);
-    res.status(500).json({
-      success: false,
-      message: "Server Error",
-      error: error.message,
-    });
+    return next(error);
   }
 };
 
-const removeFromCart = async (req, res) => {
+const removeFromCart = async (req, res, next) => {
   try {
     const { id: productId } = req.params;
     const user = req.user;
@@ -62,15 +52,11 @@ const removeFromCart = async (req, res) => {
     await user.save();
     res.json(user.cartItems);
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: "Server Error",
-      error: error.message,
-    });
+    return next(error);
   }
 };
 
-const updatequantity = async (req, res) => {
+const updatequantity = async (req, res, next) => {
   try {
     const { id: productId } = req.params;
     const { quantity } = req.body;
@@ -81,25 +67,16 @@ const updatequantity = async (req, res) => {
     );
 
     if (!existingItem) {
-      return res.status(404).json({
-        success: false,
-        message: "Item not found in cart",
-      });
+      return next(new ApiError(404, "CART_ITEM_NOT_FOUND", "Item not found in cart."));
     }
 
     const product = await Product.findById(productId);
     if (!product) {
-      return res.status(404).json({
-        success: false,
-        message: "Product not found.",
-      });
+      return next(new ApiError(404, "PRODUCT_NOT_FOUND", "Product not found."));
     }
 
     if (quantity > product.stock) {
-      return res.status(400).json({
-        success: false,
-        message: "Cannot set quantity above available stock.",
-      });
+      return next(new ApiError(400, "INSUFFICIENT_STOCK", "Cannot set quantity above available stock."));
     }
 
     if (quantity <= 0) {
@@ -113,15 +90,11 @@ const updatequantity = async (req, res) => {
     await user.save();
     res.json(user.cartItems);
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: "Server Error",
-      error: error.message,
-    });
+    return next(error);
   }
 };
 
-const getCart = async (req, res) => {
+const getCart = async (req, res, next) => {
   try {
     await req.user.populate("cartItems.product");
     const cartItems = req.user.cartItems
@@ -136,28 +109,23 @@ const getCart = async (req, res) => {
 
     res.json(cartItems);
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: "Server Error",
-      error: error.message,
-    });
+    return next(error);
   }
 };
 
-const clearCart = async (req, res) => {
+const clearCart = async (req, res, next) => {
   try {
     const user = req.user;
 
     if (!user || !Array.isArray(user.cartItems)) {
-      return res.status(400).json({ message: "Invalid user or cart." });
+      return next(new ApiError(400, "INVALID_CART", "Invalid user or cart."));
     }
 
     user.cartItems = [];
     await user.save();
     res.status(200).json({ message: "Cart cleared successfully." });
   } catch (error) {
-    console.error("Error clearing cart:", error);
-    res.status(500).json({ message: "Failed to clear cart." });
+    return next(error);
   }
 };
 

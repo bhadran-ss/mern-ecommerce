@@ -2,11 +2,12 @@ import config from "../config/env.js";
 import stripe from "../lib/stripe.js";
 import Order from "../models/order.model.js";
 import Product from "../models/product.model.js";
+import { ApiError } from "../middleware/errors.js";
 
-const createCheckoutSession = async (req, res) => {
+const createCheckoutSession = async (req, res, next) => {
   const { cart } = req.body;
   if (!cart || cart.length === 0) {
-    return res.status(400).json({ error: "Cart is empty" });
+    return next(new ApiError(400, "INVALID_CART", "Cart is empty."));
   }
 
   const productIds = cart.map((item) => item._id || item.productId);
@@ -18,12 +19,10 @@ const createCheckoutSession = async (req, res) => {
         productItem._id.toString() === (item._id || item.productId).toString(),
     );
     if (!product) {
-      return res.status(400).json({ error: `Product not found: ${item.name}` });
+      return next(new ApiError(400, "PRODUCT_NOT_FOUND", "A cart product was not found."));
     }
     if (item.quantity > product.stock) {
-      return res.status(400).json({
-        error: `Not enough stock for ${product.name}. Available: ${product.stock}`,
-      });
+      return next(new ApiError(400, "INSUFFICIENT_STOCK", "A cart product has insufficient stock."));
     }
   }
 
@@ -57,16 +56,13 @@ const createCheckoutSession = async (req, res) => {
 
     res.status(200).json({ id: session.id });
   } catch (error) {
-    console.error("Stripe error:", error);
-    res
-      .status(500)
-      .json({ error: error.message || "Failed to create session" });
+    return next(error);
   }
 };
-const checkoutSucess = async (req, res) => {
+const checkoutSucess = async (req, res, next) => {
   const { sessionId } = req.query;
   if (!sessionId) {
-    return res.status(400).json({ error: "Session ID is required" });
+    return next(new ApiError(400, "VALIDATION_ERROR", "Session ID is required."));
   }
   const existingOrder = await Order.findOne({ stripeSessionId: sessionId });
   if (existingOrder) {
@@ -89,9 +85,7 @@ const checkoutSucess = async (req, res) => {
             { $inc: { stock: -item.qty } },
           );
           if (updateResult.modifiedCount === 0) {
-            return res.status(400).json({
-              error: `Unable to decrement stock for product ${item.id}. It may be out of stock.`,
-            });
+            return next(new ApiError(400, "INSUFFICIENT_STOCK", "A product no longer has enough stock."));
           }
         }
 
@@ -111,11 +105,10 @@ const checkoutSucess = async (req, res) => {
           orderId: newOrder._id,
         });
       } else {
-        res.status(400).json({ error: "Payment not completed" });
+        return next(new ApiError(400, "PAYMENT_INCOMPLETE", "Payment is not complete."));
       }
     } catch (error) {
-      console.error(error);
-      res.status(500).json({ error: "Failed to retrieve session" });
+      return next(error);
     }
   }
 };

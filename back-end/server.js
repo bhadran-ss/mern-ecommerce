@@ -1,64 +1,95 @@
-import path from "path";
-import { fileURLToPath } from "url";
+import { createServer } from "node:http";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 
+import app from "./app.js";
 import config from "./config/env.js";
-import express from "express";
-import cookieParser from "cookie-parser";
-import cors from "cors";
+import { disconnectDB, connectDB } from "./lib/db.js";
+import { connectRedis, disconnectRedis } from "./lib/Redis.js";
+import { logger } from "./lib/logger.js";
 
-import connectDB from "./lib/db.js";
-import authRouter from "./route/auth.router.js";
-import productRouter from "./route/product.router.js";
-import cartRouter from "./route/cart.router.js";
-import PaymentRouter from "./route/payment.router.js";
+let server;
+let shutdownPromise;
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-const app = express();
-const PORT = config.PORT;
-
-// Middleware
-app.use(cookieParser());
-app.use(express.json({ limit: "10mb" }));
-app.use(
-  cors({
-    origin: config.CLIENT_URL,
-    credentials: true,
-  })
-);
-
-// API Routes
-app.use("/api/auth", authRouter);
-app.use("/api/products", productRouter);
-app.use("/api/cart", cartRouter);
-app.use("/api/payment", PaymentRouter);
-
-// Serve frontend in production
-if (config.NODE_ENV === "production") {
-  const frontendPath = path.join(__dirname, "../front-end/dist");
-  app.use(express.static(frontendPath));
- app.get(/.*/, (req, res) => {
-  res.sendFile(path.join(frontendPath, "index.html"));
-});
-
-} else {
-  app.get("/", (req, res) => {
-    res.send("Server is working (development mode)");
+const closeHttpServer = () =>
+  new Promise((resolve) => {
+    if (!server?.listening) {
+      resolve();
+      return;
+    }
+    server.close((error) => {
+      if (error) {
+        logger.error("server.http_close_failed", {
+          errorName: error.name || "Error",
+        });
+      }
+      resolve();
+    });
   });
-}
 
-const startServer = async () => {
+export const shutdown = (signal = "manual") => {
+  if (shutdownPromise) {
+    return shutdownPromise;
+  }
+
+  shutdownPromise = (async () => {
+    logger.info("server.shutdown_started", { signal });
+    await closeHttpServer();
+
+    const results = await Promise.allSettled([disconnectDB(), disconnectRedis()]);
+    for (const result of results) {
+      if (result.status === "rejected") {
+        logger.error("server.dependency_close_failed", {
+          errorName: result.reason?.name || "Error",
+        });
+        process.exitCode = 1;
+      }
+    }
+
+    logger.info("server.shutdown_complete", { signal });
+  })();
+
+  return shutdownPromise;
+};
+
+export const startServer = async () => {
   try {
     await connectDB();
-    console.log("Connection created in db...");
-    app.listen(PORT, () => {
-      console.log(`Server is running on port ${PORT}`);
+    logger.info("database.connected");
+
+    await connectRedis();
+    logger.info("redis.connected");
+
+    server = createServer(app);
+    await new Promise((resolve, reject) => {
+      const onError = (error) => reject(error);
+      server.once("error", onError);
+      server.listen(config.PORT, () => {
+        server.off("error", onError);
+        resolve();
+      });
     });
-  } catch {
-    console.error("Database connection failed. Server was not started.");
+
+    logger.info("server.listening", { port: config.PORT });
+    process.once("SIGINT", () => void shutdown("SIGINT"));
+    process.once("SIGTERM", () => void shutdown("SIGTERM"));
+    return server;
+  } catch (error) {
+    logger.error("server.startup_failed", {
+      errorName: error?.name || "Error",
+      errorCode: error?.code,
+    });
+    const results = await Promise.allSettled([disconnectDB(), disconnectRedis()]);
+    if (results.some((result) => result.status === "rejected")) {
+      logger.error("server.startup_cleanup_failed");
+    }
     process.exitCode = 1;
+    return null;
   }
 };
 
-startServer();
+const currentFile = fileURLToPath(import.meta.url);
+const invokedFile = process.argv[1] ? path.resolve(process.argv[1]) : null;
+if (invokedFile === currentFile) {
+  void startServer();
+}

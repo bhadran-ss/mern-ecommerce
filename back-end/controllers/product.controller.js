@@ -1,7 +1,8 @@
 import cloudinary from "../config/cloudinary.js";
 import Product from "../models/product.model.js";
+import { ApiError } from "../middleware/errors.js";
 
-const getAllProducts = async (req, res) => {
+const getAllProducts = async (req, res, next) => {
   try {
     const products = await Product.find();
     res.status(200).json({
@@ -10,14 +11,10 @@ const getAllProducts = async (req, res) => {
       data: products,
     });
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: "Server Error",
-      error: error.message,
-    });
+    return next(error);
   }
 };
-const getFeaturedProducts = async (req, res) => {
+const getFeaturedProducts = async (req, res, next) => {
   try {
     const products = await Product.find({ isFeatured: true });
     res.status(200).json({
@@ -26,44 +23,29 @@ const getFeaturedProducts = async (req, res) => {
       data: products,
     });
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: "Server Error",
-      error: error.message,
-    });
+    return next(error);
   }
 };
-const getProductById = async (req, res) => {
+const getProductById = async (req, res, next) => {
   const { id } = req.params;
   try {
     const product = await Product.findById(id);
     if (!product) {
-      return res.status(404).json({
-        success: false,
-        message: "Product not found",
-      });
+      return next(new ApiError(404, "PRODUCT_NOT_FOUND", "Product not found."));
     }
     res.status(200).json({
       success: true,
       data: product,
     });
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: "Server Error",
-      error: error.message,
-    });
+    return next(error);
   }
 };
-const searchProducts = async (req, res) => {
+const searchProducts = async (req, res, next) => {
   const { name } = req.query;
-  console.log("Search query:", name);
   try {
     if (!name || name.trim() === "") {
-      return res.status(400).json({
-        success: false,
-        message: "Product name is required",
-      });
+      return next(new ApiError(400, "VALIDATION_ERROR", "Product name is required."));
     }
     const products = await Product.find({
       name: { $regex: name, $options: "i" },
@@ -73,15 +55,11 @@ const searchProducts = async (req, res) => {
       data: products,
     });
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: "Server error",
-      error: error.message,
-    });
+    return next(error);
   }
 };
 
-const createProduct = async (req, res) => {
+const createProduct = async (req, res, next) => {
   try {
     const {
       name,
@@ -123,15 +101,11 @@ const createProduct = async (req, res) => {
       data: product,
     });
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: "Server Error",
-      error: error.message,
-    });
+    return next(error);
   }
 };
 
-const updateProduct = async (req, res) => {
+const updateProduct = async (req, res, next) => {
   try {
     const { id } = req.params;
     const {
@@ -147,20 +121,14 @@ const updateProduct = async (req, res) => {
 
     const product = await Product.findById(id);
     if (!product) {
-      return res.status(404).json({
-        success: false,
-        message: "Product not found",
-      });
+      return next(new ApiError(404, "PRODUCT_NOT_FOUND", "Product not found."));
     }
 
     if (
       req.user.role !== "admin" &&
       product.sellerId.toString() !== req.user._id.toString()
     ) {
-      return res.status(403).json({
-        success: false,
-        message: "Forbidden. You can only edit your own products.",
-      });
+      return next(new ApiError(403, "FORBIDDEN", "You can only edit your own products."));
     }
 
     if (Array.isArray(images) && images.length > 0) {
@@ -201,33 +169,23 @@ const updateProduct = async (req, res) => {
       data: product,
     });
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: "Server Error",
-      error: error.message,
-    });
+    return next(error);
   }
 };
 
-const deleteProduct = async (req, res) => {
+const deleteProduct = async (req, res, next) => {
   try {
     const { id } = req.params;
     const product = await Product.findById(id);
     if (!product) {
-      return res.status(404).json({
-        success: false,
-        message: "Product not found",
-      });
+      return next(new ApiError(404, "PRODUCT_NOT_FOUND", "Product not found."));
     }
 
     if (
       req.user.role !== "admin" &&
       product.sellerId.toString() !== req.user._id.toString()
     ) {
-      return res.status(403).json({
-        success: false,
-        message: "Forbidden. You can only delete your own products.",
-      });
+      return next(new ApiError(403, "FORBIDDEN", "You can only delete your own products."));
     }
 
     if (product.image) {
@@ -235,11 +193,7 @@ const deleteProduct = async (req, res) => {
       try {
         await cloudinary.uploader.destroy(`products/${publicId}`);
       } catch (error) {
-        console.error("Error deleting image from Cloudinary:", error);
-        return res.status(500).json({
-          success: false,
-          message: "Error deleting image from Cloudinary",
-        });
+        return next(error);
       }
     }
     await product.deleteOne();
@@ -248,41 +202,27 @@ const deleteProduct = async (req, res) => {
       message: "Product deleted successfully",
     });
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: "Server Error",
-      error: error.message,
-    });
+    return next(error);
   }
 };
-const getProductsByCategory = async (req, res) => {
+const getProductsByCategory = async (req, res, next) => {
   const { category } = req.params;
   try {
     const products = await Product.find({ category });
     if (products.length === 0) {
-      return res.status(404).json({
-        success: false,
-        message: "No products found in this category",
-      });
+      return next(new ApiError(404, "PRODUCTS_NOT_FOUND", "No products found in this category."));
     }
     res.status(200).json(products);
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: "Server Error",
-      error: error.message,
-    });
+    return next(error);
   }
 };
-const toggleFeaturedProduct = async (req, res) => {
+const toggleFeaturedProduct = async (req, res, next) => {
   const { id } = req.params;
   try {
     const product = await Product.findById(id);
     if (!product) {
-      return res.status(404).json({
-        success: false,
-        message: "Product not found",
-      });
+      return next(new ApiError(404, "PRODUCT_NOT_FOUND", "Product not found."));
     }
     product.isFeatured = !product.isFeatured;
     await product.save();
@@ -293,11 +233,7 @@ const toggleFeaturedProduct = async (req, res) => {
       } successfully`,
     });
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: "Server Error",
-      error: error.message,
-    });
+    return next(error);
   }
 };
 export {

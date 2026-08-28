@@ -18,9 +18,7 @@ const PurchaseSuccessPage = () => {
         const sessionId = params.get("session_id");
         if (sessionId) {
           try {
-            const response = await axios.post(
-              `payment/success?sessionId=${sessionId}`,
-            );
+            await axios.post(`payment/success?sessionId=${sessionId}`);
             dispatch(clearCart());
             setHasCalled(true);
           } catch (error) {
@@ -30,7 +28,7 @@ const PurchaseSuccessPage = () => {
       }
     };
     handleCheckoutSession();
-  }, [clearCart]);
+  }, [dispatch, hasCalled, params]);
 
   return (
     <div className="h-screen flex items-center justify-center px-4">

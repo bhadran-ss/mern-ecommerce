@@ -1,15 +1,10 @@
 import dotenv from "dotenv";
-import path from "path";
-import { fileURLToPath } from "url";
 
 import "./lib/db.js";
 import Product from "./models/product.model.js";
 import User from "./models/user.model.js";
 
 dotenv.config({ silent: true });
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 
 const sampleProducts = [
   {

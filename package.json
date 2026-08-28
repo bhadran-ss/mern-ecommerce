@@ -4,10 +4,20 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "dev": "nodemon back-end/server.js",
+    "dev": "concurrently --kill-others-on-fail --names server,client \"npm:dev:server\" \"npm:dev:client\"",
+    "dev:server": "nodemon back-end/server.js",
+    "dev:client": "npm run dev --prefix front-end",
     "start": "node back-end/server.js",
-    "seed": "node back-end/seedProducts.js",
-    "build": "npm install && npm install --prefix front-end && npm run build --prefix front-end"
+    "lint": "npm run lint:server && npm run lint:client",
+    "lint:server": "eslint back-end scripts tests",
+    "lint:client": "npm run lint --prefix front-end",
+    "test": "npm run test:server && npm run test:client",
+    "test:server": "node --test tests/project-quality.test.js",
+    "test:client": "npm run test --prefix front-end",
+    "build": "npm run build:server && npm run build:client",
+    "build:server": "node scripts/check-server-syntax.js",
+    "build:client": "npm run build --prefix front-end",
+    "seed": "node back-end/seedProducts.js"
   },
   "keywords": [],
   "author": "",
@@ -26,6 +36,10 @@
     "stripe": "^18.3.0"
   },
   "devDependencies": {
+    "@eslint/js": "^9.30.1",
+    "concurrently": "^9.2.1",
+    "eslint": "^9.30.1",
+    "globals": "^16.3.0",
     "nodemon": "^3.1.14"
   }
 }

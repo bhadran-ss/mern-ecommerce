@@ -24,7 +24,7 @@ const AllProducts = () => {
     if (searchQuery) {
       dispatch(getSearchResult(searchQuery));
     }
-  }, [getSearchResult, searchQuery]);
+  }, [dispatch, searchQuery]);
   if (loading) {
     return (
       <div

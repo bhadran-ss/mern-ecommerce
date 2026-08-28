@@ -80,6 +80,12 @@ const authSlice = createSlice({
     clearAuthError: (state) => {
       state.error = null;
     },
+    sessionExpired: (state) => {
+      state.user = null;
+      state.isLoading = false;
+      state.checkingAuth = false;
+      state.error = null;
+    },
   },
   extraReducers: (builder) => {
     builder
@@ -109,6 +115,13 @@ const authSlice = createSlice({
       })
       .addCase(logoutUser.fulfilled, (state) => {
         state.user = null;
+        state.isLoading = false;
+        state.checkingAuth = false;
+      })
+      .addCase(logoutUser.rejected, (state) => {
+        state.user = null;
+        state.isLoading = false;
+        state.checkingAuth = false;
       })
       .addCase(checkAuth.pending, (state) => {
         state.checkingAuth = true;
@@ -124,5 +137,5 @@ const authSlice = createSlice({
   },
 });
 
-export const { clearAuthError } = authSlice.actions;
+export const { clearAuthError, sessionExpired } = authSlice.actions;
 export default authSlice.reducer;

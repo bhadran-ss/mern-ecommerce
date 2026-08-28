@@ -7,7 +7,11 @@ import { Toaster } from "react-hot-toast";
 import Login from "./pages/Login";
 import { useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { checkAuth as checkAuthThunk } from "./store/slices/authSlice";
+import {
+  checkAuth as checkAuthThunk,
+  sessionExpired,
+} from "./store/slices/authSlice";
+import { AUTH_SESSION_EXPIRED_EVENT } from "./lib/axios";
 import { getFeaturedProducts as getFeaturedProductsThunk } from "./store/slices/productSlice";
 import { getCart as getCartThunk } from "./store/slices/cartSlice";
 import CategoryPage from "./pages/CategoryPage";
@@ -28,6 +32,14 @@ function App() {
 
   useEffect(() => {
     dispatch(checkAuthThunk());
+  }, [dispatch]);
+
+  useEffect(() => {
+    const handleSessionExpired = () => dispatch(sessionExpired());
+    window.addEventListener(AUTH_SESSION_EXPIRED_EVENT, handleSessionExpired);
+
+    return () =>
+      window.removeEventListener(AUTH_SESSION_EXPIRED_EVENT, handleSessionExpired);
   }, [dispatch]);
 
   useEffect(() => {

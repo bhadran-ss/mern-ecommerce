@@ -3,6 +3,7 @@ import User from "../models/user.model.js";
 import {
   createAccessToken,
   createRefreshToken,
+  decryptAccessToken,
   decryptRefreshToken,
 } from "../utils/token.service.js";
 import {
@@ -146,27 +147,36 @@ const login = async (req, res, next) => {
   }
 };
 const logout = async (req, res, next) => {
-  const refreshToken = req.cookies.refreshToken;
-  if (!refreshToken) {
-    return next(new ApiError(400, "SESSION_MISSING", "No refresh token found."));
+  const refreshToken = req.cookies?.refreshToken;
+  const accessToken = req.cookies?.accessToken;
+  clearSessionCookies(res);
+
+  let userId;
+  const tokenCandidates = [
+    ...(refreshToken ? [[refreshToken, decryptRefreshToken]] : []),
+    ...(accessToken ? [[accessToken, decryptAccessToken]] : []),
+  ];
+  for (const [token, decrypt] of tokenCandidates) {
+    try {
+      const decoded = await decrypt(token);
+      if (typeof decoded.sub === "string" && decoded.sub) {
+        userId = decoded.sub;
+        break;
+      }
+    } catch {
+      // Try the other cookie before treating logout as an already-ended session.
+    }
   }
 
-  let decoded;
-  try {
-    decoded = await decryptRefreshToken(refreshToken);
-  } catch {
-    return next(
-      new ApiError(401, "INVALID_SESSION", "Session is invalid or expired."),
-    );
+  if (userId) {
+    try {
+      await redis.del(`refresh_token:${userId}`);
+    } catch (error) {
+      return next(error);
+    }
   }
 
-  try {
-    await redis.del(`refresh_token:${decoded.sub}`);
-    clearSessionCookies(res);
-    return res.status(200).json({ message: "User logged out successfully" });
-  } catch (error) {
-    return next(error);
-  }
+  return res.status(200).json({ message: "User logged out successfully" });
 };
 const profile = (req, res, next) => {
   const user = req.user;
@@ -180,6 +190,7 @@ const refreshAccessToken = async (req, res, next) => {
   try {
     const refreshToken = req.cookies.refreshToken;
     if (!refreshToken) {
+      clearSessionCookies(res);
       return next(new ApiError(401, "SESSION_MISSING", "No refresh token provided."));
     }
 
@@ -187,6 +198,7 @@ const refreshAccessToken = async (req, res, next) => {
     try {
       decoded = await decryptRefreshToken(refreshToken);
     } catch {
+      clearSessionCookies(res);
       return next(
         new ApiError(401, "INVALID_SESSION", "Session is invalid or expired."),
       );
@@ -194,13 +206,17 @@ const refreshAccessToken = async (req, res, next) => {
 
     const storedRefreshToken = await redis.get(`refresh_token:${decoded.sub}`);
     if (storedRefreshToken !== refreshToken) {
+      clearSessionCookies(res);
       return next(new ApiError(401, "INVALID_SESSION", "Session is invalid or expired."));
     }
 
-    const accessToken = await createAccessToken({
-      _id: decoded.sub,
-      role: decoded.role,
-    });
+    const user = await User.findById(decoded.sub).select("-password");
+    if (!user) {
+      clearSessionCookies(res);
+      return next(new ApiError(401, "INVALID_SESSION", "Session is invalid or expired."));
+    }
+
+    const accessToken = await createAccessToken(user);
     setAccessCookie(res, accessToken);
 
     res.json({ message: "Token refreshed successfully" });

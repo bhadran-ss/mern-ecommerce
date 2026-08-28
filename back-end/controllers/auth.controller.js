@@ -11,21 +11,69 @@ import {
   clearSessionCookies,
 } from "../utils/session.service.js";
 import { ApiError } from "../middleware/errors.js";
+import config from "../config/env.js";
+
+const isValidEmail = (email) =>
+  typeof email === "string" &&
+  email.length <= 254 &&
+  /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+
+const isValidRegistrationPassword = (password) =>
+  typeof password === "string" &&
+  Array.from(password).length >= 12 &&
+  Buffer.byteLength(password, "utf8") <= 72;
+
+const invalidCredentials = (next) =>
+  next(new ApiError(401, "INVALID_CREDENTIALS", "Invalid email or password."));
+
+const publicUser = (user) => ({
+  id: user._id.toString(),
+  name: user.name,
+  email: user.email,
+  role: user.role,
+});
 
 const signup = async (req, res, next) => {
-  const { name, email, password, role } = req.body;
-  if (!name || !email || !password) {
-    return next(new ApiError(400, "VALIDATION_ERROR", "All fields are required."));
+  const { name, email, password, role } = req.body ?? {};
+  const normalizedEmail = typeof email === "string" ? email.trim().toLowerCase() : "";
+  const normalizedName = typeof name === "string" ? name.trim() : "";
+
+  if (
+    normalizedName.length < 2 ||
+    normalizedName.length > 100 ||
+    !isValidEmail(normalizedEmail) ||
+    !isValidRegistrationPassword(password)
+  ) {
+    return next(
+      new ApiError(
+        400,
+        "VALIDATION_ERROR",
+        "Provide a name, valid email, and password with at least 12 characters and no more than 72 UTF-8 bytes.",
+      ),
+    );
   }
 
-  const existingUser = await User.findOne({ email });
-  if (existingUser) {
-    return next(new ApiError(400, "USER_EXISTS", "User already exists."));
+  if (role === "admin") {
+    return next(
+      new ApiError(403, "FORBIDDEN", "Administrator accounts cannot be registered publicly."),
+    );
+  }
+  if (role !== undefined && role !== "customer" && role !== "seller") {
+    return next(new ApiError(400, "VALIDATION_ERROR", "Role must be customer or seller."));
   }
 
-  const safeRole = role === "seller" ? "seller" : "customer";
-  const user = new User({ name, email, password, role: safeRole });
   try {
+    const existingUser = await User.findOne({ email: normalizedEmail });
+    if (existingUser) {
+      return next(new ApiError(409, "USER_EXISTS", "An account with this email already exists."));
+    }
+
+    const user = new User({
+      name: normalizedName,
+      email: normalizedEmail,
+      password,
+      role: role === "seller" ? "seller" : "customer",
+    });
     await user.save();
 
     const accessToken = await createAccessToken(user);
@@ -35,40 +83,45 @@ const signup = async (req, res, next) => {
       `refresh_token:${user._id}`,
       refreshToken,
       "EX",
-      7 * 24 * 60 * 60,
-    ); // 7 days
+      Math.ceil(config.REFRESH_TOKEN_MAX_AGE_MS / 1000),
+    );
 
     setSessionCookies(res, accessToken, refreshToken);
 
-    return res.status(200).json({
+    return res.status(201).json({
       success: true,
       message: "User registered successfully",
-      user: {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-        role: user.role,
-      },
+      user: publicUser(user),
     });
   } catch (error) {
+    if (error?.code === 11000) {
+      return next(new ApiError(409, "USER_EXISTS", "An account with this email already exists."));
+    }
     return next(error);
   }
 };
 const login = async (req, res, next) => {
-  const { email, password } = req.body;
+  const { email, password } = req.body ?? {};
+  const normalizedEmail = typeof email === "string" ? email.trim().toLowerCase() : "";
 
-  if (!email || !password) {
-    return next(new ApiError(400, "VALIDATION_ERROR", "All fields are required."));
+  if (
+    !isValidEmail(normalizedEmail) ||
+    typeof password !== "string" ||
+    password.length === 0 ||
+    Buffer.byteLength(password, "utf8") > 72
+  ) {
+    return invalidCredentials(next);
   }
+
   try {
-    const user = await User.findOne({ email });
+    const user = await User.findOne({ email: normalizedEmail }).select("+password");
     if (!user) {
-      return next(new ApiError(400, "INVALID_CREDENTIALS", "Invalid credentials."));
+      return invalidCredentials(next);
     }
 
     const isMatch = await user.comparePassword(password);
     if (!isMatch) {
-      return next(new ApiError(400, "INVALID_CREDENTIALS", "Invalid credentials."));
+      return invalidCredentials(next);
     }
 
     const accessToken = await createAccessToken(user);
@@ -78,20 +131,15 @@ const login = async (req, res, next) => {
       `refresh_token:${user._id}`,
       refreshToken,
       "EX",
-      7 * 24 * 60 * 60,
-    ); // 7 days
+      Math.ceil(config.REFRESH_TOKEN_MAX_AGE_MS / 1000),
+    );
 
     setSessionCookies(res, accessToken, refreshToken);
 
     return res.status(200).json({
       success: true,
       message: "User logged in successfully",
-      user: {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-        role: user.role,
-      },
+      user: publicUser(user),
     });
   } catch (error) {
     return next(error);
@@ -103,8 +151,16 @@ const logout = async (req, res, next) => {
     return next(new ApiError(400, "SESSION_MISSING", "No refresh token found."));
   }
 
+  let decoded;
   try {
-    const decoded = await decryptRefreshToken(refreshToken);
+    decoded = await decryptRefreshToken(refreshToken);
+  } catch {
+    return next(
+      new ApiError(401, "INVALID_SESSION", "Session is invalid or expired."),
+    );
+  }
+
+  try {
     await redis.del(`refresh_token:${decoded.sub}`);
     clearSessionCookies(res);
     return res.status(200).json({ message: "User logged out successfully" });
@@ -127,7 +183,15 @@ const refreshAccessToken = async (req, res, next) => {
       return next(new ApiError(401, "SESSION_MISSING", "No refresh token provided."));
     }
 
-    const decoded = await decryptRefreshToken(refreshToken);
+    let decoded;
+    try {
+      decoded = await decryptRefreshToken(refreshToken);
+    } catch {
+      return next(
+        new ApiError(401, "INVALID_SESSION", "Session is invalid or expired."),
+      );
+    }
+
     const storedRefreshToken = await redis.get(`refresh_token:${decoded.sub}`);
     if (storedRefreshToken !== refreshToken) {
       return next(new ApiError(401, "INVALID_SESSION", "Session is invalid or expired."));

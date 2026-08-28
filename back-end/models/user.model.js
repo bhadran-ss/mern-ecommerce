@@ -18,6 +18,7 @@ const userSchema = new mongoose.Schema(
       type: String,
       required: true,
       minlength: [6, "Password must be at least 6 characters long"],
+      select: false,
     },
     cartItems: [
       {
@@ -40,25 +41,22 @@ const userSchema = new mongoose.Schema(
   { timestamps: true },
 );
 
-// Hash password before saving
-userSchema.pre("save", async function (next) {
-  if (!this.isModified("password")) return next();
-  try {
-    const salt = await bcrypt.genSalt(10);
-    this.password = await bcrypt.hash(this.password, salt);
-    next();
-  } catch (error) {
-    next(error);
-  }
+const removePasswordField = (_document, returnedObject) => {
+  delete returnedObject.password;
+  return returnedObject;
+};
+
+userSchema.set("toJSON", { transform: removePasswordField });
+userSchema.set("toObject", { transform: removePasswordField });
+
+userSchema.pre("save", async function () {
+  if (!this.isModified("password")) return;
+  this.password = await bcrypt.hash(this.password, 12);
 });
 
 // Compare password method
 userSchema.methods.comparePassword = async function (password) {
-  try {
-    return await bcrypt.compare(password, this.password);
-  } catch (error) {
-    throw new Error("Error comparing password");
-  }
+  return bcrypt.compare(password, this.password);
 };
 
 const User = mongoose.model("User", userSchema);

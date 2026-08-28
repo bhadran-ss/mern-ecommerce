@@ -2,6 +2,9 @@ import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import axios from "../../lib/axios";
 import toast from "react-hot-toast";
 
+const getErrorMessage = (error, fallback) =>
+  error.response?.data?.error?.message || error.response?.data?.message || fallback;
+
 const initialState = {
   user: null,
   isLoading: false,
@@ -21,10 +24,9 @@ export const registerUser = createAsyncThunk(
       toast.success(data.message);
       return data.user;
     } catch (error) {
-      toast.error(error.response?.data?.message || "Registration failed");
-      return rejectWithValue(
-        error.response?.data?.message || "Registration failed",
-      );
+      const message = getErrorMessage(error, "Registration failed");
+      toast.error(message);
+      return rejectWithValue(message);
     }
   },
 );
@@ -37,8 +39,9 @@ export const loginUser = createAsyncThunk(
       toast.success("Login successful");
       return data.user;
     } catch (error) {
-      toast.error(error.response?.data?.message || "Login failed");
-      return rejectWithValue(error.response?.data?.message || "Login failed");
+      const message = getErrorMessage(error, "Login failed");
+      toast.error(message);
+      return rejectWithValue(message);
     }
   },
 );
@@ -51,8 +54,9 @@ export const logoutUser = createAsyncThunk(
       toast.success("Logout successful");
       return null;
     } catch (error) {
-      toast.error(error.response?.data?.message || "Logout failed");
-      return rejectWithValue(error.response?.data?.message || "Logout failed");
+      const message = getErrorMessage(error, "Logout failed");
+      toast.error(message);
+      return rejectWithValue(message);
     }
   },
 );
@@ -64,9 +68,7 @@ export const checkAuth = createAsyncThunk(
       const { data } = await axios.get("/auth/profile");
       return data.user;
     } catch (error) {
-      return rejectWithValue(
-        error.response?.data?.message || "Auth check failed",
-      );
+      return rejectWithValue(getErrorMessage(error, "Auth check failed"));
     }
   },
 );

@@ -1,44 +1,15 @@
 import * as jose from "jose";
-import dotenv from "dotenv";
 import { createHash, randomUUID } from "crypto";
+import { getConfig } from "../config/env.js";
 
-dotenv.config({ quiet: true });
+const config = getConfig().jwe;
 
-const ACCESS_TOKEN_SECRET = process.env.JWE_SECRET;
-const REFRESH_TOKEN_SECRET = process.env.JWE_REFRESH_SECRET;
-const ACCESS_TOKEN_EXPIRATION = process.env.JWE_ACCESS_EXPIRATION || "15m";
-const REFRESH_TOKEN_EXPIRATION = process.env.JWE_REFRESH_EXPIRATION || "7d";
-
-const toSeconds = (duration) => {
-  const source = String(duration).trim();
-  const match = /^([0-9]+)([smhd])$/.exec(source);
-  if (!match) {
-    throw new Error(`Invalid token expiration format: ${duration}`);
-  }
-
-  const value = Number(match[1]);
-  const unit = match[2];
-
-  switch (unit) {
-    case "s":
-      return value;
-    case "m":
-      return value * 60;
-    case "h":
-      return value * 60 * 60;
-    case "d":
-      return value * 24 * 60 * 60;
-    default:
-      throw new Error(`Unsupported expiration unit: ${unit}`);
-  }
-};
-
-const getSecretKey = (secret, name) => {
-  if (!secret) {
-    throw new Error(`${name} must be defined in environment variables`);
-  }
-  return createHash("sha256").update(secret).digest();
-};
+const ACCESS_TOKEN_SECRET = createHash("sha256")
+  .update(config.accessSecret)
+  .digest();
+const REFRESH_TOKEN_SECRET = createHash("sha256")
+  .update(config.refreshSecret)
+  .digest();
 
 const encryptPayload = async (payload, secret) => {
   const encoder = new TextEncoder();
@@ -70,39 +41,35 @@ const decryptPayload = async (token, secret) => {
 };
 
 export const createAccessToken = async (user) => {
-  const secret = getSecretKey(ACCESS_TOKEN_SECRET, "JWE_SECRET");
   const now = Math.floor(Date.now() / 1000);
   const payload = {
     sub: user._id?.toString(),
     role: user.role || "customer",
     sid: randomUUID(),
     iat: now,
-    exp: now + toSeconds(ACCESS_TOKEN_EXPIRATION),
+    exp: now + config.accessExpirationSeconds,
   };
 
-  return encryptPayload(payload, secret);
+  return encryptPayload(payload, ACCESS_TOKEN_SECRET);
 };
 
 export const createRefreshToken = async (user) => {
-  const secret = getSecretKey(REFRESH_TOKEN_SECRET, "JWE_REFRESH_SECRET");
   const now = Math.floor(Date.now() / 1000);
   const payload = {
     sub: user._id?.toString(),
     role: user.role || "customer",
     sid: randomUUID(),
     iat: now,
-    exp: now + toSeconds(REFRESH_TOKEN_EXPIRATION),
+    exp: now + config.refreshExpirationSeconds,
   };
 
-  return encryptPayload(payload, secret);
+  return encryptPayload(payload, REFRESH_TOKEN_SECRET);
 };
 
 export const decryptAccessToken = async (token) => {
-  const secret = getSecretKey(ACCESS_TOKEN_SECRET, "JWE_SECRET");
-  return decryptPayload(token, secret);
+  return decryptPayload(token, ACCESS_TOKEN_SECRET);
 };
 
 export const decryptRefreshToken = async (token) => {
-  const secret = getSecretKey(REFRESH_TOKEN_SECRET, "JWE_REFRESH_SECRET");
-  return decryptPayload(token, secret);
+  return decryptPayload(token, REFRESH_TOKEN_SECRET);
 };

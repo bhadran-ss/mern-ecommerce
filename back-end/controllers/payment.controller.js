@@ -1,9 +1,9 @@
-import dotenv from "dotenv";
 import stripe from "../lib/stripe.js";
+import { getConfig } from "../config/env.js";
 import Order from "../models/order.model.js";
 import Product from "../models/product.model.js";
 
-dotenv.config({ quiet: true });
+const { clientUrl } = getConfig();
 const createCheckoutSession = async (req, res) => {
   const { cart } = req.body;
   if (!cart || cart.length === 0) {
@@ -43,8 +43,8 @@ const createCheckoutSession = async (req, res) => {
         },
         quantity: item.quantity,
       })),
-      success_url: `${process.env.CLIENT_URL}/purchase-success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${process.env.CLIENT_URL}/purchase-cancel`,
+      success_url: `${clientUrl}/purchase-success?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${clientUrl}/purchase-cancel`,
       metadata: {
         userId: req.user ? req.user._id.toString() : "guest",
         cartItems: JSON.stringify(

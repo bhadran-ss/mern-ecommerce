@@ -1,5 +1,5 @@
-import dotenv from "dotenv";
 import redis from "../lib/Redis.js";
+import { getConfig } from "../config/env.js";
 import User from "../models/user.model.js";
 import {
   createAccessToken,
@@ -12,7 +12,7 @@ import {
   clearSessionCookies,
 } from "../utils/session.service.js";
 
-dotenv.config({ quiet: true });
+const { refreshExpirationSeconds } = getConfig().jwe;
 const signup = async (req, res) => {
   const { name, email, password, role } = req.body;
   if (!name || !email || !password) {
@@ -36,8 +36,8 @@ const signup = async (req, res) => {
       `refresh_token:${user._id}`,
       refreshToken,
       "EX",
-      7 * 24 * 60 * 60,
-    ); // 7 days
+      refreshExpirationSeconds,
+    );
 
     setSessionCookies(res, accessToken, refreshToken);
 
@@ -79,8 +79,8 @@ const login = async (req, res) => {
       `refresh_token:${user._id}`,
       refreshToken,
       "EX",
-      7 * 24 * 60 * 60,
-    ); // 7 days
+      refreshExpirationSeconds,
+    );
 
     setSessionCookies(res, accessToken, refreshToken);
 

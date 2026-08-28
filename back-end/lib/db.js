@@ -1,9 +1,13 @@
-import mongoose from 'mongoose';
-import dotenv from 'dotenv';
-dotenv.config();
+import mongoose from "mongoose";
+import { getConfig } from "../config/env.js";
 
-mongoose.connect(process.env.MONGO_URI).then(() => {
+const { mongoUri } = getConfig();
+
+mongoose
+  .connect(mongoUri)
+  .then(() => {
     console.log("Connection created in db...");
-}).catch(err=> {
+  })
+  .catch((err) => {
     console.log("Connection not created..", err);
-})
+  });

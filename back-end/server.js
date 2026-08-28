@@ -2,11 +2,10 @@ import path from "path";
 import { fileURLToPath } from "url";
 
 import express from "express";
-import dotenv from "dotenv";
-dotenv.config();
 import cookieParser from "cookie-parser";
 import cors from "cors";
 
+import { getConfig } from "./config/env.js";
 import "./lib/db.js";
 import authRouter from "./route/auth.router.js";
 import productRouter from "./route/product.router.js";
@@ -15,16 +14,16 @@ import PaymentRouter from "./route/payment.router.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+const config = getConfig();
 
 const app = express();
-const PORT = process.env.PORT || 5000;
 
 // Middleware
 app.use(cookieParser());
 app.use(express.json({ limit: "10mb" }));
 app.use(
   cors({
-    origin: process.env.CLIENT_URL || "*", // Use env for flexibility
+    origin: config.clientUrl,
     credentials: true,
   })
 );
@@ -36,7 +35,7 @@ app.use("/api/cart", cartRouter);
 app.use("/api/payment", PaymentRouter);
 
 // Serve frontend in production
-if (process.env.NODE_ENV === "production") {
+if (config.nodeEnv === "production") {
   const frontendPath = path.join(__dirname, "../front-end/dist");
   app.use(express.static(frontendPath));
  app.get(/.*/, (req, res) => {
@@ -49,6 +48,6 @@ if (process.env.NODE_ENV === "production") {
   });
 }
 
-app.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
+app.listen(config.port, () => {
+  console.log(`Server is running on port ${config.port}`);
 });

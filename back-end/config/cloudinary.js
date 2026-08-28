@@ -1,12 +1,12 @@
 import { v2 as cloudinary } from "cloudinary";
-import dotenv from "dotenv";
+import { getConfig } from "./env.js";
 
-dotenv.config({ quiet: true });
+const config = getConfig().cloudinary;
 
 cloudinary.config({
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-  api_key: process.env.CLOUDINARY_API_KEY,
-  api_secret: process.env.CLOUDINARY_API_SECRET,
+  cloud_name: config.cloudName,
+  api_key: config.apiKey,
+  api_secret: config.apiSecret,
 });
 
 export default cloudinary;

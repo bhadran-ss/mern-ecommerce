@@ -1,10 +1,6 @@
-import dotenv from "dotenv";
-
 import "./lib/db.js";
 import Product from "./models/product.model.js";
 import User from "./models/user.model.js";
-
-dotenv.config({ silent: true });
 
 const sampleProducts = [
   {

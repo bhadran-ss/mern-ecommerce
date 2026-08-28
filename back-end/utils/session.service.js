@@ -1,22 +1,22 @@
-import dotenv from "dotenv";
+import { getConfig } from "../config/env.js";
 
-dotenv.config({ quiet: true });
+const config = getConfig();
 
 const COOKIE_OPTIONS = {
   httpOnly: true,
-  secure: process.env.NODE_ENV === "production",
+  secure: config.nodeEnv === "production",
   sameSite: "strict",
   path: "/",
 };
 
 const ACCESS_COOKIE_OPTIONS = {
   ...COOKIE_OPTIONS,
-  maxAge: 15 * 60 * 1000, // 15 minutes
+  maxAge: config.jwe.accessExpirationSeconds * 1000,
 };
 
 const REFRESH_COOKIE_OPTIONS = {
   ...COOKIE_OPTIONS,
-  maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+  maxAge: config.jwe.refreshExpirationSeconds * 1000,
 };
 
 export const getSessionCookies = (req) => ({

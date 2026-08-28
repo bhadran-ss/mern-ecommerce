@@ -5,25 +5,26 @@ import toast from "react-hot-toast";
 import { removeFromCart, updateQuantity } from "../store/slices/cartSlice";
 import { loadStripe } from "@stripe/stripe-js";
 import axios from "../lib/axios";
+import { getFrontendConfig } from "../config/env.js";
+
+const stripePromise = loadStripe(getFrontendConfig().stripePublishableKey);
 
 const CartPage = () => {
   const dispatch = useDispatch();
   const { cart, total } = useSelector((state) => state.cart);
-  const stripePromise = loadStripe(
-    "pk_test_51RaVaRQq8PvEmXQmDmqqWfC4rpLQm6e0FTznkKGW7Tjx536Wl96Rm2yWeSrGAnppt2bQvFmeViG3fk4SITeqGVLl00xSwG4m37",
-  );
+
   const handlePayment = async () => {
     const stripe = await stripePromise;
     const response = await axios.post("/payment/checkout", {
       cart,
     });
     const sessionId = response.data.id;
-    console.log("response", response.data);
     const result = await stripe.redirectToCheckout({ sessionId });
     if (result.error) {
       console.error("Error", result.error);
     }
   };
+
   return (
     <div className="max-w-6xl mx-auto px-6 py-12">
       <h1 className="text-3xl font-bold mb-8">Your Cart</h1>

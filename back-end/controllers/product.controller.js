@@ -1,6 +1,108 @@
+import mongoose from "mongoose";
 import cloudinary from "../config/cloudinary.js";
 import Product from "../models/product.model.js";
 import { ApiError } from "../middleware/errors.js";
+
+const createProductFields = new Set([
+  "name",
+  "description",
+  "price",
+  "images",
+  "image",
+  "category",
+  "stock",
+]);
+const updateProductFields = new Set([
+  ...createProductFields,
+  "isFeatured",
+]);
+
+const validateProductId = (id, next) => {
+  if (!mongoose.isObjectIdOrHexString(id)) {
+    next(new ApiError(400, "INVALID_PRODUCT_ID", "Product ID is invalid."));
+    return false;
+  }
+  return true;
+};
+
+const validateProductBody = (
+  body,
+  allowedFields,
+  next,
+  { creating = false } = {},
+) => {
+  if (!body || typeof body !== "object" || Array.isArray(body)) {
+    next(new ApiError(400, "VALIDATION_ERROR", "Product data must be an object."));
+    return false;
+  }
+
+  if (Object.keys(body).some((field) => !allowedFields.has(field))) {
+    next(new ApiError(400, "VALIDATION_ERROR", "Product data contains unsupported fields."));
+    return false;
+  }
+
+  if (
+    (creating &&
+      ["name", "description", "price", "category"].some(
+        (field) => !(field in body),
+      )) ||
+    (!creating && Object.keys(body).length === 0)
+  ) {
+    next(
+      new ApiError(
+        400,
+        "VALIDATION_ERROR",
+        creating
+          ? "Name, description, price, and category are required."
+          : "At least one product field is required.",
+      ),
+    );
+    return false;
+  }
+
+  for (const field of ["name", "description", "category"]) {
+    if (field in body && (typeof body[field] !== "string" || !body[field].trim())) {
+      next(new ApiError(400, "VALIDATION_ERROR", `${field} must be a non-empty string.`));
+      return false;
+    }
+  }
+
+  if (
+    "price" in body &&
+    (typeof body.price !== "number" ||
+      !Number.isFinite(body.price) ||
+      body.price < 0)
+  ) {
+    next(new ApiError(400, "VALIDATION_ERROR", "Price must be a non-negative number."));
+    return false;
+  }
+
+  if ("stock" in body && (!Number.isInteger(body.stock) || body.stock < 0)) {
+    next(new ApiError(400, "VALIDATION_ERROR", "Stock must be a non-negative whole number."));
+    return false;
+  }
+
+  if ("image" in body && typeof body.image !== "string") {
+    next(new ApiError(400, "VALIDATION_ERROR", "Image must be a string."));
+    return false;
+  }
+
+  if (
+    "images" in body &&
+    (!Array.isArray(body.images) ||
+      body.images.some((image) => typeof image !== "string"))
+  ) {
+    next(new ApiError(400, "VALIDATION_ERROR", "Images must be an array of strings."));
+    return false;
+  }
+
+  if ("isFeatured" in body && typeof body.isFeatured !== "boolean") {
+    next(new ApiError(400, "VALIDATION_ERROR", "isFeatured must be a boolean."));
+    return false;
+  }
+
+  return true;
+};
 
 const getAllProducts = async (req, res, next) => {
   try {
@@ -28,6 +130,7 @@ const getFeaturedProducts = async (req, res, next) => {
 };
 const getProductById = async (req, res, next) => {
   const { id } = req.params;
+  if (!validateProductId(id, next)) return;
   try {
     const product = await Product.findById(id);
     if (!product) {
@@ -44,11 +147,18 @@ const getProductById = async (req, res, next) => {
 const searchProducts = async (req, res, next) => {
   const { name } = req.query;
   try {
-    if (!name || name.trim() === "") {
-      return next(new ApiError(400, "VALIDATION_ERROR", "Product name is required."));
+    if (typeof name !== "string" || !name.trim() || name.trim().length > 100) {
+      return next(
+        new ApiError(
+          400,
+          "VALIDATION_ERROR",
+          "A product name of 1 to 100 characters is required.",
+        ),
+      );
     }
+    const escapedName = name.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
     const products = await Product.find({
-      name: { $regex: name, $options: "i" },
+      name: { $regex: escapedName, $options: "i" },
     });
     res.status(200).json({
       success: true,
@@ -61,6 +171,13 @@ const searchProducts = async (req, res, next) => {
 
 const createProduct = async (req, res, next) => {
   try {
+    if (
+      !validateProductBody(req.body, createProductFields, next, {
+        creating: true,
+      })
+    ) {
+      return;
+    }
     const {
       name,
       description,
@@ -108,6 +225,18 @@ const createProduct = async (req, res, next) => {
 const updateProduct = async (req, res, next) => {
   try {
     const { id } = req.params;
+    if (!validateProductId(id, next)) return;
+    if (!validateProductBody(req.body, updateProductFields, next)) return;
+    if (req.user.role !== "admin" && "isFeatured" in req.body) {
+      return next(
+        new ApiError(
+          403,
+          "FORBIDDEN",
+          "Only administrators can change featured status.",
+        ),
+      );
+    }
+
     const {
       name,
       description,
@@ -176,6 +305,7 @@ const updateProduct = async (req, res, next) => {
 const deleteProduct = async (req, res, next) => {
   try {
     const { id } = req.params;
+    if (!validateProductId(id, next)) return;
     const product = await Product.findById(id);
     if (!product) {
       return next(new ApiError(404, "PRODUCT_NOT_FOUND", "Product not found."));
@@ -208,10 +338,16 @@ const deleteProduct = async (req, res, next) => {
 const getProductsByCategory = async (req, res, next) => {
   const { category } = req.params;
   try {
-    const products = await Product.find({ category });
-    if (products.length === 0) {
-      return next(new ApiError(404, "PRODUCTS_NOT_FOUND", "No products found in this category."));
+    if (!category.trim() || category.length > 100) {
+      return next(
+        new ApiError(
+          400,
+          "VALIDATION_ERROR",
+          "Category must be between 1 and 100 characters.",
+        ),
+      );
     }
+    const products = await Product.find({ category: category.trim() });
     res.status(200).json(products);
   } catch (error) {
     return next(error);
@@ -219,6 +355,7 @@ const getProductsByCategory = async (req, res, next) => {
 };
 const toggleFeaturedProduct = async (req, res, next) => {
   const { id } = req.params;
+  if (!validateProductId(id, next)) return;
   try {
     const product = await Product.findById(id);
     if (!product) {

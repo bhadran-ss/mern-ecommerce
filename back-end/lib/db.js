@@ -1,13 +1,14 @@
 import mongoose from "mongoose";
-import { getConfig } from "../config/env.js";
 
-const { mongoUri } = getConfig();
+export const connectDatabase = async (mongoUri) => {
+  await mongoose.connect(mongoUri, { serverSelectionTimeoutMS: 10_000 });
+  return mongoose.connection;
+};
 
-mongoose
-  .connect(mongoUri)
-  .then(() => {
-    console.log("Connection created in db...");
-  })
-  .catch((err) => {
-    console.log("Connection not created..", err);
-  });
+export const disconnectDatabase = async () => {
+  if (mongoose.connection.readyState !== 0) {
+    await mongoose.disconnect();
+  }
+};
+
+export const isDatabaseReady = () => mongoose.connection.readyState === 1;

@@ -1,5 +1,6 @@
 import User from "../models/user.model.js";
 import { decryptAccessToken } from "../utils/token.service.js";
+import { logger } from "../lib/logger.js";
 
 export const protectRoute = async (req, res, next) => {
   const token = req.cookies.accessToken;
@@ -21,7 +22,10 @@ export const protectRoute = async (req, res, next) => {
     req.user = user;
     next();
   } catch (error) {
-    console.error("Access token verification error:", error.name);
+    logger.warn("auth.access_token.rejected", {
+      requestId: req.id,
+      errorName: error.name,
+    });
 
     if (error.name === "TokenExpiredError") {
       return res.status(401).json({ message: "Access token expired" });

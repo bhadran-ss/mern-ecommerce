@@ -1,4 +1,4 @@
-import redis from "../lib/Redis.js";
+import { getRedisClient } from "../lib/Redis.js";
 import { getConfig } from "../config/env.js";
 import User from "../models/user.model.js";
 import {
@@ -32,7 +32,7 @@ const signup = async (req, res) => {
     const accessToken = await createAccessToken(user);
     const refreshToken = await createRefreshToken(user);
 
-    await redis.set(
+    await getRedisClient().set(
       `refresh_token:${user._id}`,
       refreshToken,
       "EX",
@@ -75,7 +75,7 @@ const login = async (req, res) => {
     const accessToken = await createAccessToken(user);
     const refreshToken = await createRefreshToken(user);
 
-    await redis.set(
+    await getRedisClient().set(
       `refresh_token:${user._id}`,
       refreshToken,
       "EX",
@@ -106,7 +106,7 @@ const logout = async (req, res) => {
 
   try {
     const decoded = await decryptRefreshToken(refreshToken);
-    await redis.del(`refresh_token:${decoded.sub}`);
+    await getRedisClient().del(`refresh_token:${decoded.sub}`);
     clearSessionCookies(res);
     return res.status(200).json({ message: "User logged out successfully" });
   } catch (error) {
@@ -129,7 +129,9 @@ const refreshAccessToken = async (req, res) => {
     }
 
     const decoded = await decryptRefreshToken(refreshToken);
-    const storedRefreshToken = await redis.get(`refresh_token:${decoded.sub}`);
+    const storedRefreshToken = await getRedisClient().get(
+      `refresh_token:${decoded.sub}`,
+    );
     if (storedRefreshToken !== refreshToken) {
       return res.status(401).json({ message: "Invalid refresh token" });
     }
@@ -142,7 +144,6 @@ const refreshAccessToken = async (req, res) => {
 
     res.json({ message: "Token refreshed successfully" });
   } catch (error) {
-    console.log("Error in refreshToken controller", error.message);
     if (error.name === "TokenExpiredError") {
       return res.status(401).json({ message: "Refresh token expired" });
     }

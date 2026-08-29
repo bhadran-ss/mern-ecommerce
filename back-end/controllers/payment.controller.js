@@ -58,10 +58,9 @@ const createCheckoutSession = async (req, res) => {
 
     res.status(200).json({ id: session.id });
   } catch (error) {
-    console.error("Stripe error:", error);
     res
       .status(500)
-      .json({ error: error.message || "Failed to create session" });
+      .json({ message: "Failed to create session", error });
   }
 };
 const checkoutSucess = async (req, res) => {
@@ -115,8 +114,7 @@ const checkoutSucess = async (req, res) => {
         res.status(400).json({ error: "Payment not completed" });
       }
     } catch (error) {
-      console.error(error);
-      res.status(500).json({ error: "Failed to retrieve session" });
+      res.status(500).json({ message: "Failed to retrieve session", error });
     }
   }
 };

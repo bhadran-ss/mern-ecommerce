@@ -37,7 +37,6 @@ const addToCart = async (req, res) => {
       message: existingItem ? "Quantity increased." : "Product added to cart.",
     });
   } catch (error) {
-    console.error("Error adding to cart:", error);
     res.status(500).json({
       success: false,
       message: "Server Error",
@@ -156,8 +155,7 @@ const clearCart = async (req, res) => {
     await user.save();
     res.status(200).json({ message: "Cart cleared successfully." });
   } catch (error) {
-    console.error("Error clearing cart:", error);
-    res.status(500).json({ message: "Failed to clear cart." });
+    res.status(500).json({ message: "Failed to clear cart.", error });
   }
 };
 

@@ -57,7 +57,6 @@ const getProductById = async (req, res) => {
 };
 const searchProducts = async (req, res) => {
   const { name } = req.query;
-  console.log("Search query:", name);
   try {
     if (!name || name.trim() === "") {
       return res.status(400).json({
@@ -235,10 +234,10 @@ const deleteProduct = async (req, res) => {
       try {
         await cloudinary.uploader.destroy(`products/${publicId}`);
       } catch (error) {
-        console.error("Error deleting image from Cloudinary:", error);
         return res.status(500).json({
           success: false,
           message: "Error deleting image from Cloudinary",
+          error,
         });
       }
     }

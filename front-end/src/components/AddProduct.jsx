@@ -142,7 +142,7 @@ const AddProduct = () => {
               <input
                 type="file"
                 className="hidden"
-                accept="image/*"
+                accept="image/jpeg,image/png,image/webp"
                 onChange={handleImageChange}
               />
             </label>

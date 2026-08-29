@@ -1,108 +1,20 @@
-import mongoose from "mongoose";
-import cloudinary from "../config/cloudinary.js";
 import Product from "../models/product.model.js";
 import { ApiError } from "../middleware/errors.js";
-
-const createProductFields = new Set([
-  "name",
-  "description",
-  "price",
-  "images",
-  "image",
-  "category",
-  "stock",
-]);
-const updateProductFields = new Set([
-  ...createProductFields,
-  "isFeatured",
-]);
-
-const validateProductId = (id, next) => {
-  if (!mongoose.isObjectIdOrHexString(id)) {
-    next(new ApiError(400, "INVALID_PRODUCT_ID", "Product ID is invalid."));
-    return false;
-  }
-  return true;
-};
-
-const validateProductBody = (
-  body,
-  allowedFields,
-  next,
-  { creating = false } = {},
-) => {
-  if (!body || typeof body !== "object" || Array.isArray(body)) {
-    next(new ApiError(400, "VALIDATION_ERROR", "Product data must be an object."));
-    return false;
-  }
-
-  if (Object.keys(body).some((field) => !allowedFields.has(field))) {
-    next(new ApiError(400, "VALIDATION_ERROR", "Product data contains unsupported fields."));
-    return false;
-  }
-
-  if (
-    (creating &&
-      ["name", "description", "price", "category"].some(
-        (field) => !(field in body),
-      )) ||
-    (!creating && Object.keys(body).length === 0)
-  ) {
-    next(
-      new ApiError(
-        400,
-        "VALIDATION_ERROR",
-        creating
-          ? "Name, description, price, and category are required."
-          : "At least one product field is required.",
-      ),
-    );
-    return false;
-  }
-
-  for (const field of ["name", "description", "category"]) {
-    if (field in body && (typeof body[field] !== "string" || !body[field].trim())) {
-      next(new ApiError(400, "VALIDATION_ERROR", `${field} must be a non-empty string.`));
-      return false;
-    }
-  }
-
-  if (
-    "price" in body &&
-    (typeof body.price !== "number" ||
-      !Number.isFinite(body.price) ||
-      body.price < 0)
-  ) {
-    next(new ApiError(400, "VALIDATION_ERROR", "Price must be a non-negative number."));
-    return false;
-  }
-
-  if ("stock" in body && (!Number.isInteger(body.stock) || body.stock < 0)) {
-    next(new ApiError(400, "VALIDATION_ERROR", "Stock must be a non-negative whole number."));
-    return false;
-  }
-
-  if ("image" in body && typeof body.image !== "string") {
-    next(new ApiError(400, "VALIDATION_ERROR", "Image must be a string."));
-    return false;
-  }
-
-  if (
-    "images" in body &&
-    (!Array.isArray(body.images) ||
-      body.images.some((image) => typeof image !== "string"))
-  ) {
-    next(new ApiError(400, "VALIDATION_ERROR", "Images must be an array of strings."));
-    return false;
-  }
-
-  if ("isFeatured" in body && typeof body.isFeatured !== "boolean") {
-    next(new ApiError(400, "VALIDATION_ERROR", "isFeatured must be a boolean."));
-    return false;
-  }
-
-  return true;
-};
+import {
+  cleanupProductImages,
+  getProductImageReferences,
+  uploadProductImages,
+} from "../services/product-image.service.js";
+import {
+  getProductImageInputs,
+  validateProductImageDataUrls,
+} from "../validation/product-image.validation.js";
+import {
+  validateProductBody,
+  validateProductCategory,
+  validateProductId,
+  validateProductSearchName,
+} from "../validation/product.validation.js";
 
 const getAllProducts = async (req, res, next) => {
   try {
@@ -130,8 +42,8 @@ const getFeaturedProducts = async (req, res, next) => {
 };
 const getProductById = async (req, res, next) => {
   const { id } = req.params;
-  if (!validateProductId(id, next)) return;
   try {
+    validateProductId(id);
     const product = await Product.findById(id);
     if (!product) {
       return next(new ApiError(404, "PRODUCT_NOT_FOUND", "Product not found."));
@@ -147,16 +59,7 @@ const getProductById = async (req, res, next) => {
 const searchProducts = async (req, res, next) => {
   const { name } = req.query;
   try {
-    if (typeof name !== "string" || !name.trim() || name.trim().length > 100) {
-      return next(
-        new ApiError(
-          400,
-          "VALIDATION_ERROR",
-          "A product name of 1 to 100 characters is required.",
-        ),
-      );
-    }
-    const escapedName = name.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const escapedName = validateProductSearchName(name);
     const products = await Product.find({
       name: { $regex: escapedName, $options: "i" },
     });
@@ -171,48 +74,36 @@ const searchProducts = async (req, res, next) => {
 
 const createProduct = async (req, res, next) => {
   try {
-    if (
-      !validateProductBody(req.body, createProductFields, next, {
-        creating: true,
-      })
-    ) {
-      return;
-    }
+    validateProductBody(req.body, { creating: true, role: req.user.role });
     const {
       name,
       description,
       price,
-      images = [],
-      image,
       category,
       stock,
     } = req.body;
-    const uploadedImages = [];
+    const { dataUrls } = getProductImageInputs(req.body);
+    validateProductImageDataUrls(dataUrls);
+    const logger = req.app.locals.logger;
+    const uploadedImages = await uploadProductImages(dataUrls, logger);
+    let product;
 
-    if (Array.isArray(images) && images.length > 0) {
-      for (const file of images) {
-        const cloudinaryResponse = await cloudinary.uploader.upload(file, {
-          folder: "products",
-        });
-        uploadedImages.push(cloudinaryResponse.secure_url);
-      }
-    } else if (image) {
-      const cloudinaryResponse = await cloudinary.uploader.upload(image, {
-        folder: "products",
+    try {
+      product = await Product.create({
+        name,
+        description,
+        price,
+        image: uploadedImages[0]?.secure_url || "",
+        images: uploadedImages.map((image) => image.secure_url),
+        stock: stock ?? 0,
+        category,
+        sellerId: req.user._id,
       });
-      uploadedImages.push(cloudinaryResponse.secure_url);
+    } catch (error) {
+      await cleanupProductImages(uploadedImages, logger);
+      throw error;
     }
 
-    const product = await Product.create({
-      name,
-      description,
-      price,
-      image: uploadedImages[0] || "",
-      images: uploadedImages,
-      stock: stock ?? 0,
-      category,
-      sellerId: req.user._id,
-    });
     res.status(201).json({
       success: true,
       data: product,
@@ -225,24 +116,13 @@ const createProduct = async (req, res, next) => {
 const updateProduct = async (req, res, next) => {
   try {
     const { id } = req.params;
-    if (!validateProductId(id, next)) return;
-    if (!validateProductBody(req.body, updateProductFields, next)) return;
-    if (req.user.role !== "admin" && "isFeatured" in req.body) {
-      return next(
-        new ApiError(
-          403,
-          "FORBIDDEN",
-          "Only administrators can change featured status.",
-        ),
-      );
-    }
+    validateProductId(id);
+    validateProductBody(req.body, { role: req.user.role });
 
     const {
       name,
       description,
       price,
-      images = [],
-      image,
       category,
       isFeatured,
       stock,
@@ -260,23 +140,19 @@ const updateProduct = async (req, res, next) => {
       return next(new ApiError(403, "FORBIDDEN", "You can only edit your own products."));
     }
 
-    if (Array.isArray(images) && images.length > 0) {
-      const uploadedImages = [];
-      for (const file of images) {
-        const cloudinaryResponse = await cloudinary.uploader.upload(file, {
-          folder: "products",
-        });
-        uploadedImages.push(cloudinaryResponse.secure_url);
-      }
-      product.images = uploadedImages;
-      product.image = uploadedImages[0] || product.image;
-    } else if (image && image !== product.image) {
-      const cloudinaryResponse = await cloudinary.uploader.upload(image, {
-        folder: "products",
-      });
-      product.image = cloudinaryResponse.secure_url;
+    const { dataUrls, field } = getProductImageInputs(req.body);
+    validateProductImageDataUrls(dataUrls);
+    const logger = req.app.locals.logger;
+    const previousImageReferences = getProductImageReferences(product);
+    const uploadedImages = await uploadProductImages(dataUrls, logger);
+
+    if (field === "images" && uploadedImages.length > 0) {
+      product.images = uploadedImages.map((image) => image.secure_url);
+      product.image = uploadedImages[0].secure_url;
+    } else if (field === "image" && uploadedImages.length > 0) {
+      product.image = uploadedImages[0].secure_url;
       if (!product.images || product.images.length === 0) {
-        product.images = [cloudinaryResponse.secure_url];
+        product.images = [uploadedImages[0].secure_url];
       }
     }
 
@@ -291,7 +167,20 @@ const updateProduct = async (req, res, next) => {
       product.stock = stock;
     }
 
-    await product.save();
+    try {
+      await product.save();
+    } catch (error) {
+      await cleanupProductImages(uploadedImages, logger);
+      throw error;
+    }
+
+    if (uploadedImages.length > 0) {
+      const retainedImages = new Set(getProductImageReferences(product));
+      const replacedImages = previousImageReferences.filter(
+        (imageUrl) => !retainedImages.has(imageUrl),
+      );
+      await cleanupProductImages(replacedImages, logger);
+    }
 
     res.status(200).json({
       success: true,
@@ -305,7 +194,7 @@ const updateProduct = async (req, res, next) => {
 const deleteProduct = async (req, res, next) => {
   try {
     const { id } = req.params;
-    if (!validateProductId(id, next)) return;
+    validateProductId(id);
     const product = await Product.findById(id);
     if (!product) {
       return next(new ApiError(404, "PRODUCT_NOT_FOUND", "Product not found."));
@@ -318,15 +207,9 @@ const deleteProduct = async (req, res, next) => {
       return next(new ApiError(403, "FORBIDDEN", "You can only delete your own products."));
     }
 
-    if (product.image) {
-      const publicId = product.image.split("/").pop().split(".")[0];
-      try {
-        await cloudinary.uploader.destroy(`products/${publicId}`);
-      } catch (error) {
-        return next(error);
-      }
-    }
+    const imageReferences = getProductImageReferences(product);
     await product.deleteOne();
+    await cleanupProductImages(imageReferences, req.app.locals.logger);
     res.status(200).json({
       success: true,
       message: "Product deleted successfully",
@@ -338,16 +221,8 @@ const deleteProduct = async (req, res, next) => {
 const getProductsByCategory = async (req, res, next) => {
   const { category } = req.params;
   try {
-    if (!category.trim() || category.length > 100) {
-      return next(
-        new ApiError(
-          400,
-          "VALIDATION_ERROR",
-          "Category must be between 1 and 100 characters.",
-        ),
-      );
-    }
-    const products = await Product.find({ category: category.trim() });
+    const normalizedCategory = validateProductCategory(category);
+    const products = await Product.find({ category: normalizedCategory });
     res.status(200).json(products);
   } catch (error) {
     return next(error);
@@ -355,8 +230,8 @@ const getProductsByCategory = async (req, res, next) => {
 };
 const toggleFeaturedProduct = async (req, res, next) => {
   const { id } = req.params;
-  if (!validateProductId(id, next)) return;
   try {
+    validateProductId(id);
     const product = await Product.findById(id);
     if (!product) {
       return next(new ApiError(404, "PRODUCT_NOT_FOUND", "Product not found."));

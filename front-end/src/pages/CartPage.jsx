@@ -9,7 +9,7 @@ import { appConfig } from "../config/env.js";
 
 const CartPage = () => {
   const dispatch = useDispatch();
-  const { cart, total } = useSelector((state) => state.cart);
+  const { cart, total, unavailableItems } = useSelector((state) => state.cart);
   const stripePromise = appConfig.stripePublishableKey
     ? loadStripe(appConfig.stripePublishableKey)
     : null;
@@ -40,6 +40,16 @@ const CartPage = () => {
   return (
     <div className="max-w-6xl mx-auto px-6 py-12">
       <h1 className="text-3xl font-bold mb-8">Your Cart</h1>
+
+      {unavailableItems.length > 0 && (
+        <p
+          role="status"
+          className="mb-6 rounded-md border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900"
+        >
+          Some products were removed or their quantities were adjusted because
+          their availability changed. Review your cart before checkout.
+        </p>
+      )}
 
       {cart.length === 0 ? (
         <div className="bg-gray-100 p-10 text-center rounded-lg">

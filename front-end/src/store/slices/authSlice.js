@@ -17,7 +17,12 @@ export const registerUser = createAsyncThunk(
     }
 
     try {
-      const { data } = await axios.post("/auth/signup", formData);
+      const { name, email, password } = formData;
+      const { data } = await axios.post("/auth/signup", {
+        name,
+        email,
+        password,
+      });
       toast.success(data.message);
       return data.user;
     } catch (error) {

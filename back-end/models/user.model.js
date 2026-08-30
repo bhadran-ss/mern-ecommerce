@@ -1,11 +1,16 @@
 import mongoose from "mongoose";
-import bcrypt from "bcryptjs";
+
+import { getPasswordValidationIssue } from "../validation/auth.validation.js";
+import { hashPassword, verifyPassword } from "../utils/password.service.js";
 
 const userSchema = new mongoose.Schema(
   {
     name: {
       type: String,
       required: [true, "Name is required"],
+      trim: true,
+      minlength: [2, "Name must contain at least 2 characters"],
+      maxlength: [80, "Name must not exceed 80 characters"],
     },
     email: {
       type: String,
@@ -13,11 +18,18 @@ const userSchema = new mongoose.Schema(
       unique: true,
       lowercase: true,
       trim: true,
+      maxlength: [254, "Email must not exceed 254 characters"],
+      match: [/^[^\s@]+@[^\s@]+\.[^\s@]+$/, "Email must be valid"],
     },
     password: {
       type: String,
-      required: true,
-      minlength: [6, "Password must be at least 6 characters long"],
+      required: [true, "Password is required"],
+      select: false,
+      validate: {
+        validator: (password) => getPasswordValidationIssue(password) === null,
+        message: (properties) =>
+          getPasswordValidationIssue(properties.value) || "Password is invalid",
+      },
     },
     cartItems: [
       {
@@ -36,30 +48,33 @@ const userSchema = new mongoose.Schema(
       enum: ["customer", "seller", "admin"],
       default: "customer",
     },
+    accountStatus: {
+      type: String,
+      enum: ["active", "suspended", "disabled"],
+      default: "active",
+      index: true,
+    },
   },
   { timestamps: true },
 );
 
-// Hash password before saving
-userSchema.pre("save", async function (next) {
-  if (!this.isModified("password")) return next();
-  try {
-    const salt = await bcrypt.genSalt(10);
-    this.password = await bcrypt.hash(this.password, salt);
-    next();
-  } catch (error) {
-    next(error);
+userSchema.pre("save", async function () {
+  if (this.isModified("password")) {
+    this.password = await hashPassword(this.password);
   }
 });
 
-// Compare password method
-userSchema.methods.comparePassword = async function (password) {
-  try {
-    return await bcrypt.compare(password, this.password);
-  } catch {
-    throw new Error("Error comparing password");
-  }
+userSchema.methods.comparePassword = function (password) {
+  return verifyPassword(password, this.password);
 };
+
+userSchema.set("toJSON", {
+  transform: (_document, returnedObject) => {
+    delete returnedObject.password;
+    delete returnedObject.__v;
+    return returnedObject;
+  },
+});
 
 const User = mongoose.model("User", userSchema);
 

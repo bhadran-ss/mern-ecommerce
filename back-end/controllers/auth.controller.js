@@ -1,160 +1,204 @@
-import { getRedisClient } from "../lib/Redis.js";
 import { getConfig } from "../config/env.js";
+import { ApiError } from "../middleware/errors.js";
 import User from "../models/user.model.js";
+import { authSessionStore } from "../utils/auth-session.service.js";
+import { verifyPassword } from "../utils/password.service.js";
+import * as cookieService from "../utils/session.service.js";
+import * as tokenService from "../utils/token.service.js";
 import {
-  createAccessToken,
-  createRefreshToken,
-  decryptRefreshToken,
-} from "../utils/token.service.js";
-import {
-  setSessionCookies,
-  setAccessCookie,
-  clearSessionCookies,
-} from "../utils/session.service.js";
+  hasValidationIssues,
+  validateLoginInput,
+  validateRegistrationInput,
+} from "../validation/auth.validation.js";
 
-const { refreshExpirationSeconds } = getConfig().jwe;
-const signup = async (req, res) => {
-  const { name, email, password, role } = req.body;
-  if (!name || !email || !password) {
-    return res.status(400).json({ message: "All fields are required" });
-  }
+const config = getConfig();
 
-  const existingUser = await User.findOne({ email });
-  if (existingUser) {
-    return res.status(400).json({ message: "User already exists" });
-  }
-
-  const safeRole = role === "seller" ? "seller" : "customer";
-  const user = new User({ name, email, password, role: safeRole });
-  try {
+const userRepository = Object.freeze({
+  findByEmail: (email, { includePassword = false } = {}) => {
+    const query = User.findOne({ email });
+    return includePassword ? query.select("+password") : query;
+  },
+  create: async (attributes) => {
+    const user = new User(attributes);
     await user.save();
+    return user;
+  },
+});
 
-    const accessToken = await createAccessToken(user);
-    const refreshToken = await createRefreshToken(user);
+const toPublicUser = (user) => ({
+  id: user._id?.toString() ?? user.id,
+  name: user.name,
+  email: user.email,
+  role: user.role,
+  accountStatus: user.accountStatus ?? "active",
+});
 
-    await getRedisClient().set(
-      `refresh_token:${user._id}`,
+const validationError = (message, issues) =>
+  new ApiError(400, "VALIDATION_ERROR", message, { fields: issues });
+
+const invalidCredentialsError = () =>
+  new ApiError(401, "INVALID_CREDENTIALS", "Invalid email or password");
+
+export const createAuthController = ({
+  users = userRepository,
+  sessions = authSessionStore,
+  tokens = tokenService,
+  cookies = cookieService,
+  passwordVerifier = verifyPassword,
+  refreshExpirationSeconds = config.jwe.refreshExpirationSeconds,
+} = {}) => {
+  const createSession = async (res, user) => {
+    const accessToken = await tokens.createAccessToken(user);
+    const refreshToken = await tokens.createRefreshToken(user);
+
+    await sessions.create({
+      userId: user._id?.toString() ?? user.id,
       refreshToken,
-      "EX",
-      refreshExpirationSeconds,
-    );
-
-    setSessionCookies(res, accessToken, refreshToken);
-
-    return res.status(200).json({
-      success: true,
-      message: "User registered successfully",
-      user: {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-        role: user.role,
-      },
+      expiresInSeconds: refreshExpirationSeconds,
     });
-  } catch (error) {
-    res.status(500).json({ message: "Error creating user", error });
-  }
-};
-const login = async (req, res) => {
-  const { email, password } = req.body;
+    cookies.setSessionCookies(res, accessToken, refreshToken);
+  };
 
-  if (!email || !password) {
-    return res.status(400).json({ message: "All fields are required" });
-  }
-  try {
-    const user = await User.findOne({ email });
-    if (!user) {
-      return res.status(400).json({ message: "Invalid credentials" });
+  const signup = async (req, res, next) => {
+    try {
+      const { value, issues } = validateRegistrationInput(req.body);
+      if (hasValidationIssues(issues)) {
+        return next(validationError("Registration data is invalid", issues));
+      }
+
+      const existingUser = await users.findByEmail(value.email);
+      if (existingUser) {
+        return next(
+          new ApiError(
+            409,
+            "EMAIL_UNAVAILABLE",
+            "An account cannot be created with this email",
+          ),
+        );
+      }
+
+      const user = await users.create({
+        ...value,
+        role: "customer",
+        accountStatus: "active",
+      });
+      await createSession(res, user);
+
+      return res.status(201).json({
+        success: true,
+        message: "User registered successfully",
+        user: toPublicUser(user),
+      });
+    } catch (error) {
+      if (error?.code === 11000) {
+        return next(
+          new ApiError(
+            409,
+            "EMAIL_UNAVAILABLE",
+            "An account cannot be created with this email",
+          ),
+        );
+      }
+
+      return next(error);
     }
+  };
 
-    const isMatch = await user.comparePassword(password);
-    if (!isMatch) {
-      return res.status(400).json({ message: "Invalid credentials" });
+  const login = async (req, res, next) => {
+    try {
+      const { value, issues } = validateLoginInput(req.body);
+      if (hasValidationIssues(issues)) {
+        return next(validationError("Login data is invalid", issues));
+      }
+
+      const user = await users.findByEmail(value.email, {
+        includePassword: true,
+      });
+      const passwordMatches = await passwordVerifier(
+        value.password,
+        user?.password,
+      );
+      const accountIsActive = (user?.accountStatus ?? "active") === "active";
+
+      if (!user || !passwordMatches || !accountIsActive) {
+        return next(invalidCredentialsError());
+      }
+
+      await createSession(res, user);
+
+      return res.status(200).json({
+        success: true,
+        message: "User logged in successfully",
+        user: toPublicUser(user),
+      });
+    } catch (error) {
+      return next(error);
     }
+  };
 
-    const accessToken = await createAccessToken(user);
-    const refreshToken = await createRefreshToken(user);
-
-    await getRedisClient().set(
-      `refresh_token:${user._id}`,
-      refreshToken,
-      "EX",
-      refreshExpirationSeconds,
-    );
-
-    setSessionCookies(res, accessToken, refreshToken);
-
-    return res.status(200).json({
-      success: true,
-      message: "User logged in successfully",
-      user: {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-        role: user.role,
-      },
-    });
-  } catch (error) {
-    res.status(500).json({ message: "Error logging in", error });
-  }
-};
-const logout = async (req, res) => {
-  const refreshToken = req.cookies.refreshToken;
-  if (!refreshToken) {
-    return res.status(400).json({ message: "No refresh token found" });
-  }
-
-  try {
-    const decoded = await decryptRefreshToken(refreshToken);
-    await getRedisClient().del(`refresh_token:${decoded.sub}`);
-    clearSessionCookies(res);
-    return res.status(200).json({ message: "User logged out successfully" });
-  } catch (error) {
-    return res.status(500).json({ message: "Error logging out", error });
-  }
-};
-const profile = (req, res) => {
-  const user = req.user;
-  if (!user) {
-    return res.status(401).json({ message: "Unauthorized" });
-  }
-  res.status(200).json({ user });
-};
-
-const refreshAccessToken = async (req, res) => {
-  try {
+  const logout = async (req, res, next) => {
     const refreshToken = req.cookies.refreshToken;
     if (!refreshToken) {
-      return res.status(401).json({ message: "No refresh token provided" });
+      return next(new ApiError(400, "REFRESH_TOKEN_MISSING", "No refresh token found"));
     }
 
-    const decoded = await decryptRefreshToken(refreshToken);
-    const storedRefreshToken = await getRedisClient().get(
-      `refresh_token:${decoded.sub}`,
-    );
-    if (storedRefreshToken !== refreshToken) {
-      return res.status(401).json({ message: "Invalid refresh token" });
+    try {
+      const decoded = await tokens.decryptRefreshToken(refreshToken);
+      await sessions.remove(decoded.sub);
+      cookies.clearSessionCookies(res);
+      return res.status(200).json({ message: "User logged out successfully" });
+    } catch (error) {
+      return next(error);
+    }
+  };
+
+  const profile = (req, res, next) => {
+    if (!req.user) {
+      return next(new ApiError(401, "UNAUTHORIZED", "Unauthorized"));
     }
 
-    const accessToken = await createAccessToken({
-      _id: decoded.sub,
-      role: decoded.role,
-    });
-    setAccessCookie(res, accessToken);
+    return res.status(200).json({ user: req.user });
+  };
 
-    res.json({ message: "Token refreshed successfully" });
-  } catch (error) {
-    if (error.name === "TokenExpiredError") {
-      return res.status(401).json({ message: "Refresh token expired" });
+  const refreshAccessToken = async (req, res, next) => {
+    try {
+      const refreshToken = req.cookies.refreshToken;
+      if (!refreshToken) {
+        return next(
+          new ApiError(401, "REFRESH_TOKEN_MISSING", "No refresh token provided"),
+        );
+      }
+
+      const decoded = await tokens.decryptRefreshToken(refreshToken);
+      const storedRefreshToken = await sessions.get(decoded.sub);
+      if (storedRefreshToken !== refreshToken) {
+        return next(new ApiError(401, "INVALID_REFRESH_TOKEN", "Invalid refresh token"));
+      }
+
+      const accessToken = await tokens.createAccessToken({
+        _id: decoded.sub,
+        role: decoded.role,
+      });
+      cookies.setAccessCookie(res, accessToken);
+
+      return res.status(200).json({ message: "Token refreshed successfully" });
+    } catch (error) {
+      if (error.name === "TokenExpiredError") {
+        return next(
+          new ApiError(401, "REFRESH_TOKEN_EXPIRED", "Refresh token expired"),
+        );
+      }
+      return next(error);
     }
-    res.status(500).json({ message: "Server error", error: error.message });
-  }
+  };
+
+  return Object.freeze({
+    signup,
+    login,
+    logout,
+    profile,
+    refreshAccessToken,
+  });
 };
-const authcontroller = {
-  signup,
-  login,
-  logout,
-  profile,
-  refreshAccessToken,
-};
-export default authcontroller;
+
+export default createAuthController();

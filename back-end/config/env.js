@@ -105,6 +105,8 @@ export const validateEnvironment = (environment) => {
     issues.push(
       "JWE_ACCESS_EXPIRATION must use a positive duration such as 15m",
     );
+  } else if (accessExpirationSeconds > 30 * 60) {
+    issues.push("JWE_ACCESS_EXPIRATION must not exceed 30 minutes");
   }
 
   const refreshExpiration = requiredString("JWE_REFRESH_EXPIRATION");

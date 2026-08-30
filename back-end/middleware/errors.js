@@ -1,11 +1,12 @@
 import { logger as defaultLogger } from "../lib/logger.js";
 
 export class ApiError extends Error {
-  constructor(status, code, message) {
+  constructor(status, code, message, details) {
     super(message);
     this.name = "ApiError";
     this.status = status;
     this.code = code;
+    this.details = details;
   }
 }
 
@@ -111,12 +112,18 @@ export const createErrorHandler = ({ logger = defaultLogger } = {}) =>
       return;
     }
 
+    const errorBody = {
+      code: apiError.code,
+      message: apiError.message,
+      requestId: req.id,
+    };
+
+    if (apiError.details && apiError.status < 500) {
+      errorBody.details = apiError.details;
+    }
+
     res.status(apiError.status).json({
       message: apiError.message,
-      error: {
-        code: apiError.code,
-        message: apiError.message,
-        requestId: req.id,
-      },
+      error: errorBody,
     });
   };

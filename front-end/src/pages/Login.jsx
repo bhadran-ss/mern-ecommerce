@@ -30,6 +30,8 @@ const Login = () => {
               <input
                 type="email"
                 placeholder="Email"
+                autoComplete="email"
+                maxLength={254}
                 className="w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900"
                 onChange={(e) => setEmail(e.target.value)}
                 required
@@ -37,6 +39,8 @@ const Login = () => {
               <input
                 type="password"
                 placeholder="Password"
+                autoComplete="current-password"
+                maxLength={72}
                 className="w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900"
                 onChange={(e) => setPassword(e.target.value)}
                 required

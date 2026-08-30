@@ -2,22 +2,50 @@ import { getConfig } from "../config/env.js";
 
 const config = getConfig();
 
-const COOKIE_OPTIONS = {
-  httpOnly: true,
-  secure: config.nodeEnv === "production",
-  sameSite: "strict",
-  path: "/",
+export const createSessionCookieService = (applicationConfig) => {
+  const sharedOptions = Object.freeze({
+    httpOnly: true,
+    secure: applicationConfig.nodeEnv === "production",
+    sameSite: "lax",
+  });
+  const accessCookieOptions = Object.freeze({
+    ...sharedOptions,
+    path: "/",
+    maxAge: applicationConfig.jwe.accessExpirationSeconds * 1000,
+  });
+  const refreshCookieOptions = Object.freeze({
+    ...sharedOptions,
+    path: "/api/auth",
+    maxAge: applicationConfig.jwe.refreshExpirationSeconds * 1000,
+  });
+  const accessClearOptions = Object.freeze({
+    ...sharedOptions,
+    path: "/",
+  });
+  const refreshClearOptions = Object.freeze({
+    ...sharedOptions,
+    path: "/api/auth",
+  });
+
+  return Object.freeze({
+    setAccessCookie: (res, accessToken) => {
+      res.cookie("accessToken", accessToken, accessCookieOptions);
+    },
+    setRefreshCookie: (res, refreshToken) => {
+      res.cookie("refreshToken", refreshToken, refreshCookieOptions);
+    },
+    setSessionCookies: (res, accessToken, refreshToken) => {
+      res.cookie("accessToken", accessToken, accessCookieOptions);
+      res.cookie("refreshToken", refreshToken, refreshCookieOptions);
+    },
+    clearSessionCookies: (res) => {
+      res.clearCookie("accessToken", accessClearOptions);
+      res.clearCookie("refreshToken", refreshClearOptions);
+    },
+  });
 };
 
-const ACCESS_COOKIE_OPTIONS = {
-  ...COOKIE_OPTIONS,
-  maxAge: config.jwe.accessExpirationSeconds * 1000,
-};
-
-const REFRESH_COOKIE_OPTIONS = {
-  ...COOKIE_OPTIONS,
-  maxAge: config.jwe.refreshExpirationSeconds * 1000,
-};
+const sessionCookieService = createSessionCookieService(config);
 
 export const getSessionCookies = (req) => ({
   accessToken: req.cookies?.accessToken,
@@ -25,19 +53,17 @@ export const getSessionCookies = (req) => ({
 });
 
 export const setAccessCookie = (res, accessToken) => {
-  res.cookie("accessToken", accessToken, ACCESS_COOKIE_OPTIONS);
+  sessionCookieService.setAccessCookie(res, accessToken);
 };
 
 export const setRefreshCookie = (res, refreshToken) => {
-  res.cookie("refreshToken", refreshToken, REFRESH_COOKIE_OPTIONS);
+  sessionCookieService.setRefreshCookie(res, refreshToken);
 };
 
 export const setSessionCookies = (res, accessToken, refreshToken) => {
-  setAccessCookie(res, accessToken);
-  setRefreshCookie(res, refreshToken);
+  sessionCookieService.setSessionCookies(res, accessToken, refreshToken);
 };
 
 export const clearSessionCookies = (res) => {
-  res.clearCookie("accessToken", ACCESS_COOKIE_OPTIONS);
-  res.clearCookie("refreshToken", REFRESH_COOKIE_OPTIONS);
+  sessionCookieService.clearSessionCookies(res);
 };

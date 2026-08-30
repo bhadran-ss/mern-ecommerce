@@ -1,6 +1,7 @@
 import User from "../models/user.model.js";
 import { decryptAccessToken } from "../utils/token.service.js";
 import { logger } from "../lib/logger.js";
+import { ApiError } from "./errors.js";
 
 export const protectRoute = async (req, res, next) => {
   const token = req.cookies.accessToken;
@@ -15,8 +16,8 @@ export const protectRoute = async (req, res, next) => {
     const decoded = await decryptAccessToken(token);
     const user = await User.findById(decoded.sub).select("-password");
 
-    if (!user) {
-      return res.status(401).json({ message: "User not found." });
+    if (!user || (user.accountStatus ?? "active") !== "active") {
+      return next(new ApiError(401, "UNAUTHORIZED", "Unauthorized"));
     }
 
     req.user = user;

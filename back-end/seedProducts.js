@@ -346,7 +346,7 @@ const createSeller = async () => {
     seller = new User({
       name: "Demo Seller",
       email: sellerEmail,
-      password: "password123",
+      password: "Password123!",
       role: "seller",
     });
     await seller.save();

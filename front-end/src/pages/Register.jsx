@@ -8,7 +8,6 @@ const Register = () => {
     email: "",
     password: "",
     confirmPassword: "",
-    role: "customer",
   });
   const dispatch = useDispatch();
   const { isLoading } = useSelector((state) => state.auth);
@@ -35,6 +34,10 @@ const Register = () => {
               <input
                 type="text"
                 placeholder="Full Name"
+                autoComplete="name"
+                minLength={2}
+                maxLength={80}
+                required
                 className="w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900"
                 onChange={(e) =>
                   setFormData({ ...formData, name: e.target.value })
@@ -43,6 +46,9 @@ const Register = () => {
               <input
                 type="email"
                 placeholder="Email"
+                autoComplete="email"
+                maxLength={254}
+                required
                 className="w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900"
                 onChange={(e) =>
                   setFormData({ ...formData, email: e.target.value })
@@ -51,29 +57,31 @@ const Register = () => {
               <input
                 type="password"
                 placeholder="Password"
+                autoComplete="new-password"
+                minLength={12}
+                maxLength={72}
+                required
                 className="w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900"
                 onChange={(e) =>
                   setFormData({ ...formData, password: e.target.value })
                 }
               />
+              <p className="text-xs text-gray-600">
+                Use at least 12 characters with uppercase, lowercase, number,
+                and symbol characters.
+              </p>
               <input
                 type="password"
                 placeholder="Confirm Password"
+                autoComplete="new-password"
+                minLength={12}
+                maxLength={72}
+                required
                 className="w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900"
                 onChange={(e) =>
                   setFormData({ ...formData, confirmPassword: e.target.value })
                 }
               />
-              <select
-                className="w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900"
-                value={formData.role}
-                onChange={(e) =>
-                  setFormData({ ...formData, role: e.target.value })
-                }
-              >
-                <option value="customer">Customer</option>
-                <option value="seller">Seller</option>
-              </select>
               <button className="w-full bg-gray-900 text-white py-3 rounded-lg font-medium hover:bg-gray-800 transition duration-300">
                 Register
               </button>

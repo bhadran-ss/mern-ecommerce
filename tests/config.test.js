@@ -91,6 +91,16 @@ test("backend live Stripe keys are rejected without echoing the key", () => {
   );
 });
 
+test("access tokens cannot be configured with a long lifetime", () => {
+  const environment = validEnvironment();
+  environment.JWE_ACCESS_EXPIRATION = "1h";
+
+  assert.throws(
+    () => validateEnvironment(environment),
+    /JWE_ACCESS_EXPIRATION must not exceed 30 minutes/,
+  );
+});
+
 test("server startup stops with a clear error when configuration is invalid", () => {
   const environment = {
     ...process.env,

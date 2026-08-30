@@ -1,14 +1,26 @@
 import express from "express";
-const router = express.Router();
 
-import authcontroller from "../controllers/auth.controller.js"
-
+import authController from "../controllers/auth.controller.js";
+import {
+  loginRateLimit,
+  registrationRateLimit,
+} from "../middleware/auth-rate-limit.js";
 import { protectRoute } from "../middleware/auth.middleware.js";
 
-router.post("/signup", authcontroller.signup);
-router.post("/login", authcontroller.login);
-router.post("/logout", authcontroller.logout);
-router.post("/refresh-token", authcontroller.refreshAccessToken);
-router.get("/profile", protectRoute, authcontroller.profile);
+export const createAuthRouter = ({
+  controller = authController,
+  registrationLimiter = registrationRateLimit,
+  loginLimiter = loginRateLimit,
+} = {}) => {
+  const router = express.Router();
 
-export default router;
+  router.post("/signup", registrationLimiter, controller.signup);
+  router.post("/login", loginLimiter, controller.login);
+  router.post("/logout", controller.logout);
+  router.post("/refresh-token", controller.refreshAccessToken);
+  router.get("/profile", protectRoute, controller.profile);
+
+  return router;
+};
+
+export default createAuthRouter();

@@ -27,6 +27,7 @@ function App() {
   const dispatch = useDispatch();
   const { pathname } = useLocation();
   const isAuthPage = pathname === "/login" || pathname === "/register";
+  const hasCustomShell = isAuthPage || pathname === "/cart";
   const { user, checkingAuth } = useSelector((state) => state.auth);
   const featuredProducts = useSelector(
     (state) => state.products.featuredProducts,
@@ -61,17 +62,17 @@ function App() {
       <div
         id="preloader"
         className={`fixed inset-0 z-50 flex items-center justify-center ${
-          isAuthPage ? "bg-[#11110f]" : "bg-white"
+          hasCustomShell ? "bg-[#11110f]" : "bg-white"
         }`}
       >
-        <div className={`loader ${isAuthPage ? "auth-loader" : ""}`}></div>
+        <div className={`loader ${hasCustomShell ? "auth-loader" : ""}`}></div>
       </div>
     );
   }
 
   return (
     <div className="min-h-screen bg-white flex flex-col relative py-0 text-2xl">
-      {!isAuthPage && <Header />}
+      {!hasCustomShell && <Header />}
       <Toaster position="top-center" reverseOrder={false} />
       <Routes>
         <Route path="/" element={<HomePage />} />

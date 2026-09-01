@@ -1,60 +1,20 @@
-import config from "../config/env.js";
 import stripe from "../lib/stripe.js";
 import Order from "../models/order.model.js";
 import Product from "../models/product.model.js";
 import { ApiError } from "../middleware/errors.js";
+import { createTestCheckoutSession } from "../services/checkout.service.js";
+import { validateCheckoutIdempotencyKey } from "../validation/checkout.validation.js";
 
 const createCheckoutSession = async (req, res, next) => {
-  const { cart } = req.body;
-  if (!cart || cart.length === 0) {
-    return next(new ApiError(400, "INVALID_CART", "Cart is empty."));
-  }
-
-  const productIds = cart.map((item) => item._id || item.productId);
-  const products = await Product.find({ _id: { $in: productIds } });
-
-  for (const item of cart) {
-    const product = products.find(
-      (productItem) =>
-        productItem._id.toString() === (item._id || item.productId).toString(),
-    );
-    if (!product) {
-      return next(new ApiError(400, "PRODUCT_NOT_FOUND", "A cart product was not found."));
-    }
-    if (item.quantity > product.stock) {
-      return next(new ApiError(400, "INSUFFICIENT_STOCK", "A cart product has insufficient stock."));
-    }
-  }
-
   try {
-    const session = await stripe.checkout.sessions.create({
-      payment_method_types: ["card"],
-      mode: "payment",
-      line_items: cart.map((item) => ({
-        price_data: {
-          currency: "inr",
-          product_data: {
-            name: item.name,
-            images: [item.image],
-          },
-          unit_amount: item.price * 100,
-        },
-        quantity: item.quantity,
-      })),
-      success_url: `${config.CLIENT_URL}/purchase-success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${config.CLIENT_URL}/purchase-cancel`,
-      metadata: {
-        userId: req.user ? req.user._id.toString() : "guest",
-        cartItems: JSON.stringify(
-          cart.map((item) => ({
-            id: item._id || item.productId,
-            qty: item.quantity,
-          })),
-        ),
-      },
+    const idempotencyKey = validateCheckoutIdempotencyKey(
+      req.get("Idempotency-Key"),
+    );
+    const result = await createTestCheckoutSession({
+      user: req.user,
+      idempotencyKey,
     });
-
-    res.status(200).json({ id: session.id });
+    return res.status(200).json(result);
   } catch (error) {
     return next(error);
   }

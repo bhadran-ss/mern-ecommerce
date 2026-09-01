@@ -1,12 +1,6 @@
-import path from "path";
-import { fileURLToPath } from "url";
-
-import "./lib/db.js";
+import { connectDB, disconnectDB } from "./lib/db.js";
 import Product from "./models/product.model.js";
 import User from "./models/user.model.js";
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 
 const sampleProducts = [
   {
@@ -345,46 +339,43 @@ const sampleProducts = [
   },
 ];
 
-const createSeller = async () => {
-  const sellerEmail = "seller@demo.com";
-  // let seller = await User.findOne({ email: sellerEmail });
-  let seller = false; // Set to false to always create a new seller for seeding
-  if (!seller) {
-    seller = new User({
-      name: "Demo Seller",
-      email: sellerEmail,
-      password: "password123",
-      role: "seller",
-    });
-    await seller.save();
-    console.log("Created seller user:", sellerEmail);
-  }
-  return seller;
-};
-
 const seedProducts = async () => {
   try {
-    const seller = await createSeller();
+    await connectDB();
 
-    const existingCount = await Product.countDocuments();
-    if (existingCount >= sampleProducts.length) {
-      console.log(
-        `Database already contains ${existingCount} products. Seed skipped.`,
+    const seller = await User.findOne({ role: "seller" }).select("_id").lean();
+    if (!seller) {
+      console.error(
+        "No seller account exists. Create a seller account, then run the seed command again.",
       );
-      process.exit(0);
+      process.exitCode = 1;
+      return;
     }
 
-    await Product.deleteMany({});
-    const productDocs = sampleProducts.map((product) => ({
-      ...product,
-      sellerId: seller._id,
+    const operations = sampleProducts.map((product) => ({
+      updateOne: {
+        filter: { name: product.name, sellerId: seller._id },
+        update: { $setOnInsert: { ...product, sellerId: seller._id } },
+        upsert: true,
+      },
     }));
-    await Product.create(productDocs);
-    console.log(`Seeded ${productDocs.length} products successfully.`);
-    process.exit(0);
+    const result = await Product.bulkWrite(operations, { ordered: true });
+
+    console.log(
+      `Product seed complete: ${result.upsertedCount} added, ${result.matchedCount} already existed.`,
+    );
   } catch (error) {
-    console.error("Seed failed:", error);
-    process.exit(1);
+    console.error(
+      "Seed failed. Check that MongoDB is running, MONGO_URI is configured, and product data is valid.",
+    );
+    process.exitCode = 1;
+  } finally {
+    try {
+      await disconnectDB();
+    } catch {
+      console.error("Could not close the MongoDB connection cleanly.");
+      process.exitCode = 1;
+    }
   }
 };
 

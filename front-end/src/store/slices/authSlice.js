@@ -1,5 +1,5 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
-import axios from "../../lib/axios";
+import axios, { clearClientSecurityState } from "../../lib/axios";
 import toast from "react-hot-toast";
 
 const initialState = {
@@ -58,6 +58,24 @@ export const logoutUser = createAsyncThunk(
     } catch (error) {
       toast.error(error.response?.data?.message || "Logout failed");
       return rejectWithValue(error.response?.data?.message || "Logout failed");
+    } finally {
+      clearClientSecurityState();
+    }
+  },
+);
+
+export const logoutAllDevices = createAsyncThunk(
+  "auth/logoutAllDevices",
+  async (_, { rejectWithValue }) => {
+    try {
+      await axios.post("/auth/logout-all");
+      toast.success("Logged out from all devices");
+      return null;
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Logout failed");
+      return rejectWithValue(error.response?.data?.message || "Logout failed");
+    } finally {
+      clearClientSecurityState();
     }
   },
 );
@@ -82,6 +100,11 @@ const authSlice = createSlice({
   reducers: {
     clearAuthError: (state) => {
       state.error = null;
+    },
+    authenticationCleared: (state) => {
+      state.user = null;
+      state.isLoading = false;
+      state.checkingAuth = false;
     },
   },
   extraReducers: (builder) => {
@@ -113,6 +136,15 @@ const authSlice = createSlice({
       .addCase(logoutUser.fulfilled, (state) => {
         state.user = null;
       })
+      .addCase(logoutUser.rejected, (state) => {
+        state.user = null;
+      })
+      .addCase(logoutAllDevices.fulfilled, (state) => {
+        state.user = null;
+      })
+      .addCase(logoutAllDevices.rejected, (state) => {
+        state.user = null;
+      })
       .addCase(checkAuth.pending, (state) => {
         state.checkingAuth = true;
       })
@@ -127,5 +159,5 @@ const authSlice = createSlice({
   },
 });
 
-export const { clearAuthError } = authSlice.actions;
+export const { authenticationCleared, clearAuthError } = authSlice.actions;
 export default authSlice.reducer;

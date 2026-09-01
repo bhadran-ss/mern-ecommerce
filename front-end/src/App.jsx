@@ -18,6 +18,10 @@ import DetailedCard from "./pages/DetailedCard";
 import AllProducts from "./pages/AllProducts";
 import AboutPage from "./pages/AboutPage";
 import ContactPage from "./pages/ContactPage";
+import {
+  ProtectedRoute,
+  RoleProtectedRoute,
+} from "./components/ProtectedRoute";
 
 function App() {
   const dispatch = useDispatch();
@@ -66,30 +70,44 @@ function App() {
         />
         <Route
           path="/secret-panel"
-          element={user?.role === "admin" ? <AdminPage /> : <Navigate to="/" />}
+          element={
+            <RoleProtectedRoute allowedRoles={["admin"]}>
+              <AdminPage />
+            </RoleProtectedRoute>
+          }
         />
         <Route
           path="/seller-panel"
           element={
-            user?.role === "seller" || user?.role === "admin" ? (
+            <RoleProtectedRoute allowedRoles={["seller", "admin"]}>
               <AdminPage />
-            ) : (
-              <Navigate to="/" />
-            )
+            </RoleProtectedRoute>
           }
         />
         <Route path="/category/:category" element={<CategoryPage />} />
         <Route
           path="/cart"
-          element={user ? <CartPage /> : <Navigate to="/login" />}
+          element={
+            <ProtectedRoute>
+              <CartPage />
+            </ProtectedRoute>
+          }
         />
         <Route
           path="/purchase-success"
-          element={user ? <PurchaseSuccessPage /> : <Navigate to="/login" />}
+          element={
+            <ProtectedRoute>
+              <PurchaseSuccessPage />
+            </ProtectedRoute>
+          }
         />
         <Route
           path="/purchase-cancel"
-          element={user ? <PurchaseCancelPage /> : <Navigate to="/login" />}
+          element={
+            <ProtectedRoute>
+              <PurchaseCancelPage />
+            </ProtectedRoute>
+          }
         />
         <Route path="/product/:id" element={<DetailedCard />} />
         <Route path="/products" element={<AllProducts />} />

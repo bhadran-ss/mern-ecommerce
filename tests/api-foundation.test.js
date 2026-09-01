@@ -191,6 +191,7 @@ test("disallowed origins, oversized bodies, and excessive requests are rejected"
   });
 
   const { app: bodyApp } = createTestApp({
+    csrfProtection: (_req, _res, next) => next(),
     registerApiRoutes: (router) => {
       router.post("/api/echo", (req, res) => res.json(req.body));
     },

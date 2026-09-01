@@ -9,7 +9,7 @@
     "start": "vite",
     "build": "vite build",
     "lint": "eslint .",
-    "test": "node --test tests/dependency-baseline.test.js tests/config.test.js",
+    "test": "node --test tests/dependency-baseline.test.js tests/config.test.js tests/auth-client.test.js",
     "preview": "vite preview"
   },
   "dependencies": {

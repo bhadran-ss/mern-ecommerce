@@ -4,12 +4,10 @@ import { logger } from "../lib/logger.js";
 import { ApiError } from "./errors.js";
 
 export const protectRoute = async (req, res, next) => {
-  const token = req.cookies.accessToken;
+  const token = req.cookies?.accessToken;
 
   if (!token) {
-    return res
-      .status(401)
-      .json({ message: "Unauthorized. No token provided." });
+    return next(new ApiError(401, "UNAUTHORIZED", "Unauthorized"));
   }
 
   try {
@@ -21,7 +19,8 @@ export const protectRoute = async (req, res, next) => {
     }
 
     req.user = user;
-    next();
+    req.auth = { sessionId: decoded.sid };
+    return next();
   } catch (error) {
     logger.warn("auth.access_token.rejected", {
       requestId: req.id,
@@ -29,10 +28,12 @@ export const protectRoute = async (req, res, next) => {
     });
 
     if (error.name === "TokenExpiredError") {
-      return res.status(401).json({ message: "Access token expired" });
+      return next(
+        new ApiError(401, "ACCESS_TOKEN_EXPIRED", "Access token expired"),
+      );
     }
 
-    res.status(401).json({ message: "Invalid token" });
+    return next(new ApiError(401, "INVALID_ACCESS_TOKEN", "Invalid token"));
   }
 };
 

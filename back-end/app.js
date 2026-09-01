@@ -18,6 +18,7 @@ import {
   notFoundHandler,
 } from "./middleware/errors.js";
 import { createRequestContext } from "./middleware/request-context.js";
+import { csrfProtection as defaultCsrfProtection } from "./middleware/csrf.middleware.js";
 import { logger as defaultLogger } from "./lib/logger.js";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -59,6 +60,7 @@ export const createApp = ({
   getDependencyStatus,
   registerApiRoutes = registerDefaultApiRoutes,
   rateLimitOptions = defaultRateLimitOptions,
+  csrfProtection = defaultCsrfProtection,
 } = {}) => {
   if (!config) {
     throw new Error("Application configuration is required");
@@ -136,6 +138,7 @@ export const createApp = ({
 
   app.use(createErrorResponseNormalizer({ logger }));
   app.use(cookieParser());
+  app.use("/api", csrfProtection);
   app.use(express.json({ limit: "100kb" }));
   app.use(express.urlencoded({ extended: false, limit: "100kb" }));
 

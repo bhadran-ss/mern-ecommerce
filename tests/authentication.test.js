@@ -87,15 +87,21 @@ const createControllerFixture = ({ existingUser = null, verifier = true } = {}) 
         password: "stored-password-value",
       };
     },
+    findById: async () => existingUser,
   };
   const sessions = {
     create: async (session) => {
       calls.session = session;
     },
-    get: async () => null,
-    remove: async () => {},
+    rotate: async () => "rotated",
+    revoke: async () => {},
+    revokeAll: async () => {},
   };
   const tokens = {
+    createSessionIdentifiers: () => ({
+      sessionId: "session-fixture",
+      familyId: "family-fixture",
+    }),
     createAccessToken: async () => "access-token-fixture",
     createRefreshToken: async () => "refresh-token-fixture",
     decryptRefreshToken: async () => ({}),
@@ -105,6 +111,7 @@ const createControllerFixture = ({ existingUser = null, verifier = true } = {}) 
       calls.cookies = { accessToken, refreshToken };
     },
     setAccessCookie: () => {},
+    setCsrfCookie: () => {},
     clearSessionCookies: () => {},
   };
   const passwordVerifier = async (password, hash) => {
@@ -146,6 +153,8 @@ test("registration normalizes input and always creates an active customer", asyn
   });
   assert.deepEqual(calls.session, {
     userId: "user-123",
+    sessionId: "session-fixture",
+    familyId: "family-fixture",
     refreshToken: "refresh-token-fixture",
     expiresInSeconds: refreshExpirationSeconds,
   });
@@ -352,6 +361,7 @@ test("session cookies are HttpOnly and become Secure in production", () => {
     "access-token-fixture",
     "refresh-token-fixture",
   );
+  productionCookies.setCsrfCookie(response, "csrf-token-fixture");
   productionCookies.clearSessionCookies(response);
 
   const accessCookie = cookieCalls.find(
@@ -360,6 +370,9 @@ test("session cookies are HttpOnly and become Secure in production", () => {
   const refreshCookie = cookieCalls.find(
     (call) => call.operation === "set" && call.name === "refreshToken",
   );
+  const csrfCookie = cookieCalls.find(
+    (call) => call.operation === "set" && call.name === "csrfToken",
+  );
   assert.equal(accessCookie.options.httpOnly, true);
   assert.equal(accessCookie.options.secure, true);
   assert.equal(accessCookie.options.sameSite, "lax");
@@ -367,6 +380,16 @@ test("session cookies are HttpOnly and become Secure in production", () => {
   assert.equal(refreshCookie.options.httpOnly, true);
   assert.equal(refreshCookie.options.secure, true);
   assert.equal(refreshCookie.options.path, "/api/auth");
+  assert.equal(csrfCookie.options.httpOnly, false);
+  assert.equal(csrfCookie.options.secure, true);
+  assert.equal(csrfCookie.options.sameSite, "lax");
+  assert.equal(csrfCookie.options.path, "/");
+  assert.equal(
+    cookieCalls.some(
+      (call) => call.operation === "clear" && call.name === "csrfToken",
+    ),
+    true,
+  );
 
   const developmentCalls = [];
   createSessionCookieService(createConfig("development")).setAccessCookie(
@@ -380,31 +403,28 @@ test("refresh-token sessions are stored with a bounded Redis lifetime", async ()
   const commands = [];
   const store = createAuthSessionStore({
     getClient: () => ({
-      set: async (...args) => commands.push(["set", ...args]),
-      get: async (...args) => commands.push(["get", ...args]),
-      del: async (...args) => commands.push(["del", ...args]),
+      eval: async (...args) => {
+        commands.push(args);
+        return "created";
+      },
     }),
   });
 
   await store.create({
     userId: "user-789",
+    sessionId: "session-789",
+    familyId: "family-789",
     refreshToken: "refresh-token-fixture",
     expiresInSeconds: refreshExpirationSeconds,
   });
-  await store.get("user-789");
-  await store.remove("user-789");
 
-  assert.deepEqual(commands, [
-    [
-      "set",
-      "auth:refresh:user-789",
-      "refresh-token-fixture",
-      "EX",
-      refreshExpirationSeconds,
-    ],
-    ["get", "auth:refresh:user-789"],
-    ["del", "auth:refresh:user-789"],
-  ]);
+  assert.equal(commands.length, 1);
+  assert.equal(commands[0][1], 2);
+  assert.equal(commands[0][2], "auth:session:session-789");
+  assert.equal(commands[0][3], "auth:user-sessions:user-789");
+  assert.equal(commands[0].includes("refresh-token-fixture"), false);
+  assert.match(commands[0][6], /^[a-f0-9]{64}$/);
+  assert.equal(commands[0][7], refreshExpirationSeconds);
 });
 
 const withServer = async (app, run) => {
@@ -437,23 +457,34 @@ test("registration and login routes have independent rate limits", async () => {
     code: "LOGIN_RATE_LIMITED",
     message: "Login rate limited",
   });
+  const refreshLimiter = createAuthRateLimit({
+    windowMs: 60_000,
+    limit: 1,
+    code: "REFRESH_RATE_LIMITED",
+    message: "Refresh rate limited",
+  });
   const controller = {
+    getCsrfToken: (_req, res) => res.status(200).json({ csrfToken: "fixture" }),
     signup: (_req, res) => res.status(400).json({ message: "Rejected" }),
     login: (_req, res) => res.status(401).json({ message: "Rejected" }),
     logout: () => {},
-    refreshAccessToken: () => {},
+    logoutAll: () => {},
+    refreshAccessToken: (_req, res) =>
+      res.status(401).json({ message: "Rejected" }),
     profile: () => {},
   };
   const router = createAuthRouter({
     controller,
     registrationLimiter,
     loginLimiter,
+    refreshLimiter,
   });
   const logger = createLogger({ sink: () => {} });
   const app = createApp({
     config: { nodeEnv: "test", clientUrl: "http://localhost:5173" },
     logger,
     getDependencyStatus: () => ({ mongodb: true, redis: true }),
+    csrfProtection: (_req, _res, next) => next(),
     registerApiRoutes: (application) => {
       application.use("/api/auth", router);
     },
@@ -481,6 +512,14 @@ test("registration and login routes have independent rate limits", async () => {
     assert.equal(
       (await blockedLogin.json()).error.code,
       "LOGIN_RATE_LIMITED",
+    );
+
+    assert.equal((await request("/api/auth/refresh-token")).status, 401);
+    const blockedRefresh = await request("/api/auth/refresh-token");
+    assert.equal(blockedRefresh.status, 429);
+    assert.equal(
+      (await blockedRefresh.json()).error.code,
+      "REFRESH_RATE_LIMITED",
     );
   });
 });

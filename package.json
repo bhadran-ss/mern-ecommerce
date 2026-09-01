@@ -12,7 +12,7 @@
     "lint:server": "eslint back-end scripts tests",
     "lint:client": "npm run lint --prefix front-end",
     "test": "npm run test:server && npm run test:client",
-    "test:server": "node --test tests/project-quality.test.js tests/config.test.js tests/api-foundation.test.js tests/server-lifecycle.test.js tests/authentication.test.js",
+    "test:server": "node --test tests/project-quality.test.js tests/config.test.js tests/api-foundation.test.js tests/server-lifecycle.test.js tests/authentication.test.js tests/session-security.test.js",
     "test:client": "npm run test --prefix front-end",
     "build": "npm run build:server && npm run build:client",
     "build:server": "node scripts/check-server-syntax.js",

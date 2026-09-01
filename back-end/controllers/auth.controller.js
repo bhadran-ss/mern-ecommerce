@@ -2,6 +2,7 @@ import { getConfig } from "../config/env.js";
 import { ApiError } from "../middleware/errors.js";
 import User from "../models/user.model.js";
 import { authSessionStore } from "../utils/auth-session.service.js";
+import { csrfTokenService } from "../utils/csrf.service.js";
 import { verifyPassword } from "../utils/password.service.js";
 import * as cookieService from "../utils/session.service.js";
 import * as tokenService from "../utils/token.service.js";
@@ -23,6 +24,7 @@ const userRepository = Object.freeze({
     await user.save();
     return user;
   },
+  findById: (id) => User.findById(id).select("-password"),
 });
 
 const toPublicUser = (user) => ({
@@ -45,14 +47,21 @@ export const createAuthController = ({
   tokens = tokenService,
   cookies = cookieService,
   passwordVerifier = verifyPassword,
+  csrfTokens = csrfTokenService,
   refreshExpirationSeconds = config.jwe.refreshExpirationSeconds,
 } = {}) => {
   const createSession = async (res, user) => {
-    const accessToken = await tokens.createAccessToken(user);
-    const refreshToken = await tokens.createRefreshToken(user);
+    const { sessionId, familyId } = tokens.createSessionIdentifiers();
+    const accessToken = await tokens.createAccessToken(user, { sessionId });
+    const refreshToken = await tokens.createRefreshToken(user, {
+      sessionId,
+      familyId,
+    });
 
     await sessions.create({
       userId: user._id?.toString() ?? user.id,
+      sessionId,
+      familyId,
       refreshToken,
       expiresInSeconds: refreshExpirationSeconds,
     });
@@ -136,20 +145,54 @@ export const createAuthController = ({
     }
   };
 
-  const logout = async (req, res, next) => {
-    const refreshToken = req.cookies.refreshToken;
+  const logout = async (req, res, _next) => {
+    const refreshToken = req.cookies?.refreshToken;
+    cookies.clearSessionCookies(res);
+
     if (!refreshToken) {
-      return next(new ApiError(400, "REFRESH_TOKEN_MISSING", "No refresh token found"));
+      return res.status(200).json({ message: "User logged out successfully" });
+    }
+
+    let decoded;
+    try {
+      decoded = await tokens.decryptRefreshToken(refreshToken);
+    } catch {
+      return res.status(200).json({ message: "User logged out successfully" });
     }
 
     try {
-      const decoded = await tokens.decryptRefreshToken(refreshToken);
-      await sessions.remove(decoded.sub);
-      cookies.clearSessionCookies(res);
+      await sessions.revoke({
+        userId: decoded.sub,
+        sessionId: decoded.sid,
+        familyId: decoded.fid,
+      });
       return res.status(200).json({ message: "User logged out successfully" });
+    } catch (error) {
+      return _next(error);
+    }
+  };
+
+  const logoutAll = async (req, res, next) => {
+    cookies.clearSessionCookies(res);
+
+    try {
+      const id = req.user?._id?.toString() ?? req.user?.id;
+      if (!id) {
+        return next(new ApiError(401, "UNAUTHORIZED", "Unauthorized"));
+      }
+
+      await sessions.revokeAll(id);
+      return res.status(200).json({ message: "Logged out from all devices" });
     } catch (error) {
       return next(error);
     }
+  };
+
+  const getCsrfToken = (_req, res) => {
+    const csrfToken = csrfTokens.createToken();
+    cookies.setCsrfCookie(res, csrfToken);
+    res.set("Cache-Control", "no-store");
+    return res.status(200).json({ csrfToken });
   };
 
   const profile = (req, res, next) => {
@@ -161,33 +204,71 @@ export const createAuthController = ({
   };
 
   const refreshAccessToken = async (req, res, next) => {
+    const refreshToken = req.cookies?.refreshToken;
+
     try {
-      const refreshToken = req.cookies.refreshToken;
       if (!refreshToken) {
+        cookies.clearSessionCookies(res);
         return next(
           new ApiError(401, "REFRESH_TOKEN_MISSING", "No refresh token provided"),
         );
       }
 
-      const decoded = await tokens.decryptRefreshToken(refreshToken);
-      const storedRefreshToken = await sessions.get(decoded.sub);
-      if (storedRefreshToken !== refreshToken) {
-        return next(new ApiError(401, "INVALID_REFRESH_TOKEN", "Invalid refresh token"));
+      let decoded;
+      try {
+        decoded = await tokens.decryptRefreshToken(refreshToken);
+      } catch (error) {
+        cookies.clearSessionCookies(res);
+        const code =
+          error.name === "TokenExpiredError"
+            ? "REFRESH_TOKEN_EXPIRED"
+            : "INVALID_REFRESH_TOKEN";
+        return next(new ApiError(401, code, "Refresh session is invalid"));
       }
 
-      const accessToken = await tokens.createAccessToken({
-        _id: decoded.sub,
-        role: decoded.role,
+      const user = await users.findById(decoded.sub);
+      if (!user || (user.accountStatus ?? "active") !== "active") {
+        await sessions.revoke({
+          userId: decoded.sub,
+          sessionId: decoded.sid,
+          familyId: decoded.fid,
+        });
+        cookies.clearSessionCookies(res);
+        return next(new ApiError(401, "UNAUTHORIZED", "Unauthorized"));
+      }
+
+      const nextRefreshToken = await tokens.createRefreshToken(user, {
+        sessionId: decoded.sid,
+        familyId: decoded.fid,
       });
-      cookies.setAccessCookie(res, accessToken);
+      const accessToken = await tokens.createAccessToken(user, {
+        sessionId: decoded.sid,
+      });
+      const rotationResult = await sessions.rotate({
+        userId: decoded.sub,
+        sessionId: decoded.sid,
+        familyId: decoded.fid,
+        currentRefreshToken: refreshToken,
+        nextRefreshToken,
+        expiresInSeconds: refreshExpirationSeconds,
+      });
 
-      return res.status(200).json({ message: "Token refreshed successfully" });
-    } catch (error) {
-      if (error.name === "TokenExpiredError") {
-        return next(
-          new ApiError(401, "REFRESH_TOKEN_EXPIRED", "Refresh token expired"),
-        );
+      if (rotationResult !== "rotated") {
+        cookies.clearSessionCookies(res);
+        const code =
+          rotationResult === "reused"
+            ? "REFRESH_TOKEN_REUSED"
+            : "INVALID_REFRESH_TOKEN";
+        return next(new ApiError(401, code, "Refresh session is invalid"));
       }
+
+      cookies.setSessionCookies(res, accessToken, nextRefreshToken);
+
+      return res.status(200).json({
+        message: "Token refreshed successfully",
+        user: toPublicUser(user),
+      });
+    } catch (error) {
       return next(error);
     }
   };
@@ -196,7 +277,9 @@ export const createAuthController = ({
     signup,
     login,
     logout,
+    logoutAll,
     profile,
+    getCsrfToken,
     refreshAccessToken,
   });
 };

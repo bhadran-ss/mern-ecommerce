@@ -40,12 +40,20 @@ const decryptPayload = async (token, secret) => {
   return payload;
 };
 
-export const createAccessToken = async (user) => {
+const userId = (user) => user._id?.toString() ?? user.id ?? user.sub;
+
+export const createSessionIdentifiers = () => ({
+  sessionId: randomUUID(),
+  familyId: randomUUID(),
+});
+
+export const createAccessToken = async (user, { sessionId } = {}) => {
   const now = Math.floor(Date.now() / 1000);
   const payload = {
-    sub: user._id?.toString(),
+    sub: userId(user),
     role: user.role || "customer",
-    sid: randomUUID(),
+    sid: sessionId ?? randomUUID(),
+    typ: "access",
     iat: now,
     exp: now + config.accessExpirationSeconds,
   };
@@ -53,12 +61,17 @@ export const createAccessToken = async (user) => {
   return encryptPayload(payload, ACCESS_TOKEN_SECRET);
 };
 
-export const createRefreshToken = async (user) => {
+export const createRefreshToken = async (
+  user,
+  { sessionId, familyId } = createSessionIdentifiers(),
+) => {
   const now = Math.floor(Date.now() / 1000);
   const payload = {
-    sub: user._id?.toString(),
-    role: user.role || "customer",
-    sid: randomUUID(),
+    sub: userId(user),
+    sid: sessionId,
+    fid: familyId,
+    jti: randomUUID(),
+    typ: "refresh",
     iat: now,
     exp: now + config.refreshExpirationSeconds,
   };
@@ -67,9 +80,26 @@ export const createRefreshToken = async (user) => {
 };
 
 export const decryptAccessToken = async (token) => {
-  return decryptPayload(token, ACCESS_TOKEN_SECRET);
+  const payload = await decryptPayload(token, ACCESS_TOKEN_SECRET);
+  if (
+    payload.typ !== "access" ||
+    typeof payload.sub !== "string" ||
+    typeof payload.sid !== "string"
+  ) {
+    throw new Error("Invalid access token payload");
+  }
+  return payload;
 };
 
 export const decryptRefreshToken = async (token) => {
-  return decryptPayload(token, REFRESH_TOKEN_SECRET);
+  const payload = await decryptPayload(token, REFRESH_TOKEN_SECRET);
+  if (
+    payload.typ !== "refresh" ||
+    typeof payload.sub !== "string" ||
+    typeof payload.sid !== "string" ||
+    typeof payload.fid !== "string"
+  ) {
+    throw new Error("Invalid refresh token payload");
+  }
+  return payload;
 };

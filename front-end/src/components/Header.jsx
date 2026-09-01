@@ -4,7 +4,10 @@ import { Menu, X, XCircle } from "lucide-react";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
-import { logoutUser } from "../store/slices/authSlice";
+import {
+  logoutAllDevices,
+  logoutUser,
+} from "../store/slices/authSlice";
 import { clearSearchResult } from "../store/slices/productSlice";
 
 const Header = () => {
@@ -96,12 +99,20 @@ const Header = () => {
         <div className="flex items-center gap-4">
           {/* Login / Logout */}
           {user ? (
-            <button
-              onClick={() => dispatch(logoutUser())}
-              className="hidden text-sm font-medium hover:underline md:block"
-            >
-              Logout
-            </button>
+            <div className="hidden items-center gap-3 md:flex">
+              <button
+                onClick={() => dispatch(logoutUser())}
+                className="text-sm font-medium hover:underline"
+              >
+                Logout
+              </button>
+              <button
+                onClick={() => dispatch(logoutAllDevices())}
+                className="text-sm font-medium hover:underline"
+              >
+                Logout all
+              </button>
+            </div>
           ) : (
             <div className="hidden items-center gap-2 md:flex">
               <button onClick={() => navigate("/register")}>Register</button>
@@ -225,15 +236,26 @@ const Header = () => {
             )}
 
             {user && (
-              <button
-                onClick={() => {
-                  dispatch(logoutUser());
-                  setIsMobileOpen(false);
-                }}
-                className="px-6 py-4 text-left text-red-600 hover:bg-red-50"
-              >
-                Logout
-              </button>
+              <>
+                <button
+                  onClick={() => {
+                    dispatch(logoutUser());
+                    setIsMobileOpen(false);
+                  }}
+                  className="border-b px-6 py-4 text-left text-red-600 hover:bg-red-50"
+                >
+                  Logout this device
+                </button>
+                <button
+                  onClick={() => {
+                    dispatch(logoutAllDevices());
+                    setIsMobileOpen(false);
+                  }}
+                  className="px-6 py-4 text-left text-red-600 hover:bg-red-50"
+                >
+                  Logout all devices
+                </button>
+              </>
             )}
           </nav>
         </div>

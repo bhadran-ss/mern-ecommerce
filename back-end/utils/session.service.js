@@ -26,6 +26,19 @@ export const createSessionCookieService = (applicationConfig) => {
     ...sharedOptions,
     path: "/api/auth",
   });
+  const csrfCookieOptions = Object.freeze({
+    httpOnly: false,
+    secure: applicationConfig.nodeEnv === "production",
+    sameSite: "lax",
+    path: "/",
+    maxAge: applicationConfig.jwe.refreshExpirationSeconds * 1000,
+  });
+  const csrfClearOptions = Object.freeze({
+    httpOnly: false,
+    secure: applicationConfig.nodeEnv === "production",
+    sameSite: "lax",
+    path: "/",
+  });
 
   return Object.freeze({
     setAccessCookie: (res, accessToken) => {
@@ -38,9 +51,13 @@ export const createSessionCookieService = (applicationConfig) => {
       res.cookie("accessToken", accessToken, accessCookieOptions);
       res.cookie("refreshToken", refreshToken, refreshCookieOptions);
     },
+    setCsrfCookie: (res, csrfToken) => {
+      res.cookie("csrfToken", csrfToken, csrfCookieOptions);
+    },
     clearSessionCookies: (res) => {
       res.clearCookie("accessToken", accessClearOptions);
       res.clearCookie("refreshToken", refreshClearOptions);
+      res.clearCookie("csrfToken", csrfClearOptions);
     },
   });
 };
@@ -62,6 +79,10 @@ export const setRefreshCookie = (res, refreshToken) => {
 
 export const setSessionCookies = (res, accessToken, refreshToken) => {
   sessionCookieService.setSessionCookies(res, accessToken, refreshToken);
+};
+
+export const setCsrfCookie = (res, csrfToken) => {
+  sessionCookieService.setCsrfCookie(res, csrfToken);
 };
 
 export const clearSessionCookies = (res) => {

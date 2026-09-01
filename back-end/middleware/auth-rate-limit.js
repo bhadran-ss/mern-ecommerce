@@ -34,3 +34,9 @@ export const loginRateLimit = createAuthRateLimit({
   skipSuccessfulRequests: true,
 });
 
+export const refreshRateLimit = createAuthRateLimit({
+  windowMs: 15 * 60 * 1_000,
+  limit: 30,
+  code: "REFRESH_RATE_LIMITED",
+  message: "Too many refresh attempts; please sign in again",
+});

@@ -16,6 +16,7 @@ import authRouter from "./route/auth.router.js";
 import productRouter from "./route/product.router.js";
 import cartRouter from "./route/cart.router.js";
 import paymentRouter from "./route/payment.router.js";
+import { handleStripeWebhook } from "./controllers/payment.controller.js";
 
 const allowedOrigins = new Set([new URL(config.CLIENT_URL).origin]);
 
@@ -71,6 +72,13 @@ export const createApp = () => {
       },
     }),
   );
+
+  app.post(
+    "/api/payment/webhook",
+    express.raw({ type: "application/json", limit: "1mb" }),
+    handleStripeWebhook,
+  );
+
   app.use("/api", apiRateLimit);
   app.use(express.json({ limit: "10mb" }));
   app.use(cookieParser());

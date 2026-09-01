@@ -4,13 +4,13 @@ import { ApiError } from "../middleware/errors.js";
 import Product from "../models/product.model.js";
 import stripe from "../lib/stripe.js";
 import {
+  createStripeCartMetadata,
   priceToMinorUnits,
   validateCheckoutCart,
 } from "../validation/checkout.validation.js";
 
 const INR_MINIMUM_MINOR_UNITS = 50;
 const INR_MAXIMUM_MINOR_UNITS = 999999999;
-const STRIPE_METADATA_VALUE_LIMIT = 500;
 
 export const createTestCheckoutSession = async ({
   user,
@@ -35,6 +35,17 @@ export const createTestCheckoutSession = async ({
         409,
         "CART_STALE",
         "A product in your cart is no longer available in that quantity. Refresh your cart and try again.",
+      );
+    }
+    if (
+      typeof product.name !== "string" ||
+      product.name.trim() === "" ||
+      product.name.trim().length > 500
+    ) {
+      throw new ApiError(
+        400,
+        "INVALID_PRODUCT_NAME",
+        "A product in your cart has a name that cannot be used for checkout.",
       );
     }
 
@@ -62,19 +73,13 @@ export const createTestCheckoutSession = async ({
     );
   }
 
-  const cartMetadata = JSON.stringify(
-    lineItems.map(({ productId, quantity }) => ({
+  const cartMetadata = createStripeCartMetadata(
+    lineItems.map(({ productId, quantity, unitAmount }) => ({
       id: productId,
       qty: quantity,
+      unitAmount,
     })),
   );
-  if (cartMetadata.length > STRIPE_METADATA_VALUE_LIMIT) {
-    throw new ApiError(
-      400,
-      "CART_TOO_LARGE",
-      "Your cart is too large to start checkout. Remove some items and try again.",
-    );
-  }
 
   const userId = user._id.toString();
   const stripeIdempotencyKey = createHash("sha256")
@@ -87,7 +92,7 @@ export const createTestCheckoutSession = async ({
       line_items: lineItems.map(({ product, quantity, unitAmount }) => ({
         price_data: {
           currency: "inr",
-          product_data: { name: product.name },
+          product_data: { name: product.name.trim() },
           unit_amount: unitAmount,
         },
         quantity,
@@ -96,11 +101,34 @@ export const createTestCheckoutSession = async ({
       cancel_url: `${config.CLIENT_URL}/purchase-cancel`,
       metadata: {
         userId,
-        cartItems: cartMetadata,
+        expectedTotalMinorUnits: String(totalMinorUnits),
+        ...cartMetadata,
       },
     },
     { idempotencyKey: stripeIdempotencyKey },
   );
 
-  return { id: session.id };
+  let checkoutUrl;
+  try {
+    checkoutUrl = new URL(session.url);
+  } catch {
+    throw new ApiError(
+      502,
+      "CHECKOUT_UNAVAILABLE",
+      "Stripe did not return a valid checkout link. Please try again.",
+    );
+  }
+
+  if (
+    checkoutUrl.protocol !== "https:" ||
+    checkoutUrl.hostname !== "checkout.stripe.com"
+  ) {
+    throw new ApiError(
+      502,
+      "CHECKOUT_UNAVAILABLE",
+      "Stripe did not return a valid checkout link. Please try again.",
+    );
+  }
+
+  return { url: checkoutUrl.toString() };
 };

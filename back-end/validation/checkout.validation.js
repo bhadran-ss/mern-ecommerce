@@ -2,6 +2,8 @@ import mongoose from "mongoose";
 import { ApiError } from "../middleware/errors.js";
 
 const MAX_CART_ITEMS = 100;
+const MAX_STRIPE_METADATA_CHUNKS = 47;
+const STRIPE_METADATA_VALUE_LIMIT = 500;
 const UUID_V4_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -67,6 +69,36 @@ export const validateCheckoutCart = (cartItems) => {
     productId,
     quantity,
   }));
+};
+
+export const createStripeCartMetadata = (cartItems) => {
+  const serializedCart = JSON.stringify(cartItems);
+  const chunkCount = Math.ceil(
+    serializedCart.length / STRIPE_METADATA_VALUE_LIMIT,
+  );
+
+  if (chunkCount < 1 || chunkCount > MAX_STRIPE_METADATA_CHUNKS) {
+    throw new ApiError(
+      400,
+      "CART_TOO_LARGE",
+      "Your cart is too large to start checkout. Remove some items and try again.",
+    );
+  }
+
+  const chunks = Object.fromEntries(
+    Array.from({ length: chunkCount }, (_, index) => [
+      `cartItems${index}`,
+      serializedCart.slice(
+        index * STRIPE_METADATA_VALUE_LIMIT,
+        (index + 1) * STRIPE_METADATA_VALUE_LIMIT,
+      ),
+    ]),
+  );
+
+  return {
+    cartItemChunkCount: String(chunkCount),
+    ...chunks,
+  };
 };
 
 export const priceToMinorUnits = (price) => {

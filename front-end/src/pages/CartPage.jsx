@@ -15,13 +15,7 @@ import {
   removeFromCart,
   updateQuantity,
 } from "../store/slices/cartSlice";
-import { loadStripe } from "@stripe/stripe-js";
 import axios from "../lib/axios";
-import { appConfig } from "../config/env.js";
-
-const stripePromise = appConfig.stripePublishableKey
-  ? loadStripe(appConfig.stripePublishableKey)
-  : null;
 
 const CartPage = () => {
   const dispatch = useDispatch();
@@ -32,11 +26,6 @@ const CartPage = () => {
 
   const handlePayment = async () => {
     if (checkoutInProgress.current) return;
-
-    if (!stripePromise) {
-      toast.error("Stripe test configuration is missing.");
-      return;
-    }
 
     if (typeof globalThis.crypto?.randomUUID !== "function") {
       toast.error("Secure checkout requests are unavailable in this browser.");
@@ -59,21 +48,19 @@ const CartPage = () => {
     }
 
     try {
-      const stripe = await stripePromise;
-      if (!stripe) {
-        throw new Error("Stripe.js could not be initialized.");
-      }
       const response = await axios.post("/payment/checkout", null, {
         headers: {
           "Idempotency-Key": checkoutRequest.current.idempotencyKey,
         },
       });
-      const result = await stripe.redirectToCheckout({
-        sessionId: response.data.id,
-      });
-      if (result.error) {
-        toast.error(result.error.message || "Unable to start demo checkout.");
+      const checkoutUrl = new URL(response.data.url);
+      if (
+        checkoutUrl.protocol !== "https:" ||
+        checkoutUrl.hostname !== "checkout.stripe.com"
+      ) {
+        throw new Error("Stripe returned an invalid checkout link.");
       }
+      window.location.assign(checkoutUrl.toString());
     } catch (error) {
       const message =
         error.response?.data?.error?.message ||

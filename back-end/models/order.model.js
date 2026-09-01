@@ -17,12 +17,29 @@ const orderSchema = new mongoose.Schema({
         type: Number,
         required: true,
         default: 1
+      },
+      productName: {
+        type: String,
+        required: true
+      },
+      unitAmountMinorUnits: {
+        type: Number,
+        required: true
       }
     }
   ],
   totalAmount: {
     type: Number,
     required: true
+  },
+  totalAmountMinorUnits: {
+    type: Number,
+    required: true
+  },
+  currency: {
+    type: String,
+    required: true,
+    default: 'inr'
   },
   status: {
     type: String,

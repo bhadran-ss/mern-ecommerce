@@ -23,11 +23,44 @@ import AllProducts from "./pages/AllProducts";
 import AboutPage from "./pages/AboutPage";
 import ContactPage from "./pages/ContactPage";
 
+const getLoginDestination = (returnTo) => {
+  if (!returnTo) return "/";
+
+  try {
+    const target = new URL(returnTo, "https://vistyle.invalid");
+    if (target.origin !== "https://vistyle.invalid") {
+      return "/";
+    }
+
+    if (target.pathname === "/cart" && !target.search && !target.hash) {
+      return "/cart";
+    }
+    if (target.pathname !== "/purchase-success") return "/";
+
+    const sessionId = target.searchParams.get("session_id");
+    if (!sessionId || !/^cs_test_[A-Za-z0-9]+$/.test(sessionId)) {
+      return "/";
+    }
+
+    return `/purchase-success?session_id=${encodeURIComponent(sessionId)}`;
+  } catch {
+    return "/";
+  }
+};
+
 function App() {
   const dispatch = useDispatch();
-  const { pathname } = useLocation();
+  const location = useLocation();
+  const { pathname } = location;
+  const loginDestination = getLoginDestination(
+    new URLSearchParams(location.search).get("returnTo"),
+  );
   const isAuthPage = pathname === "/login" || pathname === "/register";
-  const hasCustomShell = isAuthPage || pathname === "/cart";
+  const hasCustomShell =
+    isAuthPage ||
+    pathname === "/cart" ||
+    pathname === "/purchase-success" ||
+    pathname === "/purchase-cancel";
   const { user, checkingAuth } = useSelector((state) => state.auth);
   const featuredProducts = useSelector(
     (state) => state.products.featuredProducts,
@@ -76,7 +109,16 @@ function App() {
       <Toaster position="top-center" reverseOrder={false} />
       <Routes>
         <Route path="/" element={<HomePage />} />
-        <Route path="/login" element={user ? <Navigate to="/" /> : <Login />} />
+        <Route
+          path="/login"
+          element={
+            user ? (
+              <Navigate to={loginDestination} replace />
+            ) : (
+              <Login />
+            )
+          }
+        />
         <Route
           path="/register"
           element={user ? <Navigate to="/" /> : <Register />}
@@ -98,15 +140,21 @@ function App() {
         <Route path="/category/:category" element={<CategoryPage />} />
         <Route
           path="/cart"
-          element={user ? <CartPage /> : <Navigate to="/login" />}
+          element={
+            user ? (
+              <CartPage />
+            ) : (
+              <Navigate to="/login?returnTo=%2Fcart" replace />
+            )
+          }
         />
         <Route
           path="/purchase-success"
-          element={user ? <PurchaseSuccessPage /> : <Navigate to="/login" />}
+          element={<PurchaseSuccessPage />}
         />
         <Route
           path="/purchase-cancel"
-          element={user ? <PurchaseCancelPage /> : <Navigate to="/login" />}
+          element={<PurchaseCancelPage />}
         />
         <Route path="/product/:id" element={<DetailedCard />} />
         <Route path="/products" element={<AllProducts />} />

@@ -9,13 +9,13 @@ const initialState = {
   user: null,
   isLoading: false,
   checkingAuth: true,
+  error: null,
 };
 
 export const registerUser = createAsyncThunk(
   "auth/registerUser",
   async (formData, { rejectWithValue }) => {
     if (formData.password !== formData.confirmPassword) {
-      toast.error("Passwords do not match");
       return rejectWithValue("Passwords do not match");
     }
 
@@ -25,7 +25,6 @@ export const registerUser = createAsyncThunk(
       return data.user;
     } catch (error) {
       const message = getErrorMessage(error, "Registration failed");
-      toast.error(message);
       return rejectWithValue(message);
     }
   },
@@ -40,7 +39,6 @@ export const loginUser = createAsyncThunk(
       return data.user;
     } catch (error) {
       const message = getErrorMessage(error, "Login failed");
-      toast.error(message);
       return rejectWithValue(message);
     }
   },
@@ -91,27 +89,33 @@ const authSlice = createSlice({
     builder
       .addCase(registerUser.pending, (state) => {
         state.isLoading = true;
+        state.error = null;
       })
       .addCase(registerUser.fulfilled, (state, action) => {
         state.user = action.payload;
         state.isLoading = false;
         state.checkingAuth = false;
+        state.error = null;
       })
-      .addCase(registerUser.rejected, (state) => {
+      .addCase(registerUser.rejected, (state, action) => {
         state.isLoading = false;
         state.checkingAuth = false;
+        state.error = action.payload || "Registration failed.";
       })
       .addCase(loginUser.pending, (state) => {
         state.isLoading = true;
+        state.error = null;
       })
       .addCase(loginUser.fulfilled, (state, action) => {
         state.user = action.payload;
         state.isLoading = false;
         state.checkingAuth = false;
+        state.error = null;
       })
-      .addCase(loginUser.rejected, (state) => {
+      .addCase(loginUser.rejected, (state, action) => {
         state.isLoading = false;
         state.checkingAuth = false;
+        state.error = action.payload || "Login failed.";
       })
       .addCase(logoutUser.fulfilled, (state) => {
         state.user = null;

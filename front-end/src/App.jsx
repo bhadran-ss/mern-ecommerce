@@ -1,4 +1,4 @@
-import { Navigate, Route, Routes } from "react-router-dom";
+import { Navigate, Route, Routes, useLocation } from "react-router-dom";
 import HomePage from "./pages/HomePage";
 import Header from "./components/Header";
 import Register from "./pages/Register";
@@ -25,6 +25,8 @@ import ContactPage from "./pages/ContactPage";
 
 function App() {
   const dispatch = useDispatch();
+  const { pathname } = useLocation();
+  const isAuthPage = pathname === "/login" || pathname === "/register";
   const { user, checkingAuth } = useSelector((state) => state.auth);
   const featuredProducts = useSelector(
     (state) => state.products.featuredProducts,
@@ -58,16 +60,18 @@ function App() {
     return (
       <div
         id="preloader"
-        className="fixed inset-0 flex items-center justify-center bg-white z-50"
+        className={`fixed inset-0 z-50 flex items-center justify-center ${
+          isAuthPage ? "bg-[#11110f]" : "bg-white"
+        }`}
       >
-        <div className="loader"></div>
+        <div className={`loader ${isAuthPage ? "auth-loader" : ""}`}></div>
       </div>
     );
   }
 
   return (
     <div className="min-h-screen bg-white flex flex-col relative py-0 text-2xl">
-      <Header />
+      {!isAuthPage && <Header />}
       <Toaster position="top-center" reverseOrder={false} />
       <Routes>
         <Route path="/" element={<HomePage />} />

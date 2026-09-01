@@ -347,7 +347,8 @@ const sampleProducts = [
 
 const createSeller = async () => {
   const sellerEmail = "seller@demo.com";
-  let seller = await User.findOne({ email: sellerEmail });
+  // let seller = await User.findOne({ email: sellerEmail });
+  let seller = false; // Set to false to always create a new seller for seeding
   if (!seller) {
     seller = new User({
       name: "Demo Seller",

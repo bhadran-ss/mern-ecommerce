@@ -1,7 +1,7 @@
-import mongoose from 'mongoose';
-import config from '../config/env.js';
+import mongoose from "mongoose";
+import config from "../config/env.js";
 
-const connectDB = async () => {
+export const connectDB = async () => {
   await mongoose.connect(config.MONGO_URI);
   return mongoose.connection;
 };
@@ -18,5 +18,3 @@ export const isDatabaseReady = async () => {
     return false;
   }
 };
-
-export default connectDB;

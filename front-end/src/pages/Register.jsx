@@ -1,93 +1,179 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { registerUser } from "../store/slices/authSlice";
+import { Link } from "react-router-dom";
+import AuthLayout from "../components/AuthLayout";
+import { clearAuthError, registerUser } from "../store/slices/authSlice";
+
+const initialFormData = {
+  name: "",
+  email: "",
+  password: "",
+  confirmPassword: "",
+  role: "customer",
+};
 
 const Register = () => {
-  const [formData, setFormData] = useState({
-    name: "",
-    email: "",
-    password: "",
-    confirmPassword: "",
-    role: "customer",
-  });
+  const [formData, setFormData] = useState(initialFormData);
   const dispatch = useDispatch();
-  const { isLoading } = useSelector((state) => state.auth);
-  const handleSubmit = (e) => {
-    e.preventDefault();
+  const { isLoading, error } = useSelector((state) => state.auth);
+
+  const handleChange = (event) => {
+    const { name, value } = event.target;
+    setFormData((current) => ({ ...current, [name]: value }));
+    dispatch(clearAuthError());
+  };
+
+  const handleSubmit = (event) => {
+    event.preventDefault();
     dispatch(registerUser(formData));
   };
+
   return (
-    <>
-      {isLoading ? (
-        <div
-          id="preloader"
-          className="fixed inset-0 flex items-center justify-center bg-white z-50"
+    <AuthLayout
+      eyebrow="Make it yours"
+      title="Find your way in."
+      description="Create an account to get started with Vistyle."
+      footer={
+        <>
+          Already have an account?{" "}
+          <Link
+            to="/login"
+            className="font-medium text-[#e3d8ff] underline decoration-[#c6b2ff]/50 underline-offset-4 transition hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#c6b2ff]"
+          >
+            Sign in
+          </Link>
+        </>
+      }
+    >
+      <form className="space-y-4" onSubmit={handleSubmit} aria-busy={isLoading}>
+        <div>
+          <label
+            htmlFor="register-name"
+            className="mb-2 block text-[11px] font-semibold uppercase tracking-[0.16em] text-white/65"
+          >
+            Name
+          </label>
+          <input
+            id="register-name"
+            name="name"
+            type="text"
+            autoComplete="name"
+            minLength={2}
+            maxLength={100}
+            placeholder="Your name"
+            className="w-full border border-white/15 bg-white/[0.045] px-4 py-3 text-sm text-[#f4f1e9] placeholder:text-white/30 transition focus:border-[#c6b2ff]/80 focus:outline-none focus:ring-2 focus:ring-[#c6b2ff]/20"
+            value={formData.name}
+            onChange={handleChange}
+            required
+          />
+        </div>
+        <div>
+          <label
+            htmlFor="register-email"
+            className="mb-2 block text-[11px] font-semibold uppercase tracking-[0.16em] text-white/65"
+          >
+            Email
+          </label>
+          <input
+            id="register-email"
+            name="email"
+            type="email"
+            autoComplete="email"
+            maxLength={254}
+            placeholder="you@example.com"
+            className="w-full border border-white/15 bg-white/[0.045] px-4 py-3 text-sm text-[#f4f1e9] placeholder:text-white/30 transition focus:border-[#c6b2ff]/80 focus:outline-none focus:ring-2 focus:ring-[#c6b2ff]/20"
+            value={formData.email}
+            onChange={handleChange}
+            required
+          />
+        </div>
+        <div>
+          <label
+            htmlFor="register-password"
+            className="mb-2 block text-[11px] font-semibold uppercase tracking-[0.16em] text-white/65"
+          >
+            Password
+          </label>
+          <input
+            id="register-password"
+            name="password"
+            type="password"
+            autoComplete="new-password"
+            minLength={12}
+            maxLength={72}
+            aria-describedby="password-guidance"
+            placeholder="Create a password"
+            className="w-full border border-white/15 bg-white/[0.045] px-4 py-3 text-sm text-[#f4f1e9] placeholder:text-white/30 transition focus:border-[#c6b2ff]/80 focus:outline-none focus:ring-2 focus:ring-[#c6b2ff]/20"
+            value={formData.password}
+            onChange={handleChange}
+            required
+          />
+          <p id="password-guidance" className="mt-2 text-xs text-white/45">
+            Use 12 characters or more.
+          </p>
+        </div>
+        <div>
+          <label
+            htmlFor="register-confirm-password"
+            className="mb-2 block text-[11px] font-semibold uppercase tracking-[0.16em] text-white/65"
+          >
+            Confirm password
+          </label>
+          <input
+            id="register-confirm-password"
+            name="confirmPassword"
+            type="password"
+            autoComplete="new-password"
+            minLength={12}
+            maxLength={72}
+            placeholder="Enter your password again"
+            className="w-full border border-white/15 bg-white/[0.045] px-4 py-3 text-sm text-[#f4f1e9] placeholder:text-white/30 transition focus:border-[#c6b2ff]/80 focus:outline-none focus:ring-2 focus:ring-[#c6b2ff]/20"
+            value={formData.confirmPassword}
+            onChange={handleChange}
+            required
+          />
+        </div>
+        <div>
+          <label
+            htmlFor="register-role"
+            className="mb-2 block text-[11px] font-semibold uppercase tracking-[0.16em] text-white/65"
+          >
+            Account type
+          </label>
+          <select
+            id="register-role"
+            name="role"
+            className="w-full appearance-none border border-white/15 bg-[#1a191b] px-4 py-3 text-sm text-[#f4f1e9] transition focus:border-[#c6b2ff]/80 focus:outline-none focus:ring-2 focus:ring-[#c6b2ff]/20"
+            value={formData.role}
+            onChange={handleChange}
+          >
+            <option value="customer">Customer</option>
+            <option value="seller">Seller</option>
+          </select>
+        </div>
+        {error && (
+          <p
+            role="alert"
+            className="border border-rose-300/20 bg-rose-400/10 px-4 py-3 text-sm text-rose-200"
+          >
+            {error}
+          </p>
+        )}
+        <button
+          type="submit"
+          disabled={isLoading}
+          className="group flex w-full items-center justify-between border border-[#c6b2ff] bg-[#c6b2ff] px-5 py-4 text-left text-sm font-semibold tracking-wide text-[#17151b] transition hover:bg-[#d5c8ff] disabled:cursor-wait disabled:opacity-60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#c6b2ff]"
         >
-          <div className="loader"></div>
-        </div>
-      ) : (
-        <div className="min-h-screen flex items-center justify-center bg-gray-100 px-4">
-          <div className="bg-white p-8 rounded-2xl shadow-lg w-full max-w-md">
-            <h2 className="text-2xl font-semibold text-center text-gray-800 mb-6">
-              Create an Account
-            </h2>
-            <form className="space-y-4" onSubmit={handleSubmit}>
-              <input
-                type="text"
-                placeholder="Full Name"
-                className="w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900"
-                onChange={(e) =>
-                  setFormData({ ...formData, name: e.target.value })
-                }
-              />
-              <input
-                type="email"
-                placeholder="Email"
-                className="w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900"
-                onChange={(e) =>
-                  setFormData({ ...formData, email: e.target.value })
-                }
-              />
-              <input
-                type="password"
-                placeholder="Password"
-                className="w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900"
-                onChange={(e) =>
-                  setFormData({ ...formData, password: e.target.value })
-                }
-              />
-              <input
-                type="password"
-                placeholder="Confirm Password"
-                className="w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900"
-                onChange={(e) =>
-                  setFormData({ ...formData, confirmPassword: e.target.value })
-                }
-              />
-              <select
-                className="w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900"
-                value={formData.role}
-                onChange={(e) =>
-                  setFormData({ ...formData, role: e.target.value })
-                }
-              >
-                <option value="customer">Customer</option>
-                <option value="seller">Seller</option>
-              </select>
-              <button className="w-full bg-gray-900 text-white py-3 rounded-lg font-medium hover:bg-gray-800 transition duration-300">
-                Register
-              </button>
-            </form>
-            <p className="mt-4 text-sm text-center text-gray-600">
-              Already have an account?{" "}
-              <a href="/login" className="text-gray-900 font-medium underline">
-                Login
-              </a>
-            </p>
-          </div>
-        </div>
-      )}
-    </>
+          <span>{isLoading ? "Creating account..." : "Create your account"}</span>
+          <span
+            aria-hidden="true"
+            className="text-lg transition-transform group-hover:translate-x-1"
+          >
+            &#8599;
+          </span>
+        </button>
+      </form>
+    </AuthLayout>
   );
 };
 

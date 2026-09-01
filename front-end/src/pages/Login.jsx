@@ -1,63 +1,105 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { loginUser } from "../store/slices/authSlice";
+import { Link } from "react-router-dom";
+import AuthLayout from "../components/AuthLayout";
+import { clearAuthError, loginUser } from "../store/slices/authSlice";
 
 const Login = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const dispatch = useDispatch();
-  const { isLoading } = useSelector((state) => state.auth);
-  const handleSubmit = (e) => {
-    e.preventDefault();
+  const { isLoading, error } = useSelector((state) => state.auth);
+
+  const handleSubmit = (event) => {
+    event.preventDefault();
     dispatch(loginUser({ email, password }));
   };
+
   return (
-    <>
-      {isLoading ? (
-        <div
-          id="preloader"
-          className="fixed inset-0 flex items-center justify-center bg-white z-50"
+    <AuthLayout
+      eyebrow="Welcome back"
+      title="Good to see you."
+      description="Sign in to continue to your Vistyle account."
+      footer={
+        <>
+          New to Vistyle?{" "}
+          <Link
+            to="/register"
+            className="font-medium text-[#e3d8ff] underline decoration-[#c6b2ff]/50 underline-offset-4 transition hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#c6b2ff]"
+          >
+            Create an account
+          </Link>
+        </>
+      }
+    >
+      <form className="space-y-5" onSubmit={handleSubmit} aria-busy={isLoading}>
+        <div>
+          <label
+            htmlFor="login-email"
+            className="mb-2 block text-[11px] font-semibold uppercase tracking-[0.16em] text-white/65"
+          >
+            Email
+          </label>
+          <input
+            id="login-email"
+            name="email"
+            type="email"
+            autoComplete="username"
+            placeholder="you@example.com"
+            className="w-full border border-white/15 bg-white/[0.045] px-4 py-3.5 text-sm text-[#f4f1e9] placeholder:text-white/30 transition focus:border-[#c6b2ff]/80 focus:outline-none focus:ring-2 focus:ring-[#c6b2ff]/20"
+            value={email}
+            onChange={(event) => {
+              setEmail(event.target.value);
+              dispatch(clearAuthError());
+            }}
+            required
+          />
+        </div>
+        <div>
+          <label
+            htmlFor="login-password"
+            className="mb-2 block text-[11px] font-semibold uppercase tracking-[0.16em] text-white/65"
+          >
+            Password
+          </label>
+          <input
+            id="login-password"
+            name="password"
+            type="password"
+            autoComplete="current-password"
+            placeholder="Enter your password"
+            className="w-full border border-white/15 bg-white/[0.045] px-4 py-3.5 text-sm text-[#f4f1e9] placeholder:text-white/30 transition focus:border-[#c6b2ff]/80 focus:outline-none focus:ring-2 focus:ring-[#c6b2ff]/20"
+            value={password}
+            onChange={(event) => {
+              setPassword(event.target.value);
+              dispatch(clearAuthError());
+            }}
+            required
+          />
+        </div>
+        {error && (
+          <p
+            role="alert"
+            className="border border-rose-300/20 bg-rose-400/10 px-4 py-3 text-sm text-rose-200"
+          >
+            {error}
+          </p>
+        )}
+        <button
+          type="submit"
+          disabled={isLoading}
+          className="group flex w-full items-center justify-between border border-[#c6b2ff] bg-[#c6b2ff] px-5 py-4 text-left text-sm font-semibold tracking-wide text-[#17151b] transition hover:bg-[#d5c8ff] disabled:cursor-wait disabled:opacity-60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#c6b2ff]"
         >
-          <div className="loader"></div>
-        </div>
-      ) : (
-        <div className="min-h-screen flex items-center justify-center bg-gray-100 px-4">
-          <div className="bg-white p-8 rounded-2xl shadow-lg w-full max-w-md">
-            <h2 className="text-2xl font-semibold text-center text-gray-800 mb-6">
-              Login
-            </h2>
-            <form className="space-y-4" onSubmit={handleSubmit}>
-              <input
-                type="email"
-                placeholder="Email"
-                className="w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900"
-                onChange={(e) => setEmail(e.target.value)}
-                required
-              />
-              <input
-                type="password"
-                placeholder="Password"
-                className="w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900"
-                onChange={(e) => setPassword(e.target.value)}
-                required
-              />
-              <button className="w-full bg-gray-900 text-white py-3 rounded-lg font-medium hover:bg-gray-800 transition duration-300">
-                Login
-              </button>
-            </form>
-            <p className="mt-4 text-sm text-center text-gray-600">
-              Don’t have an account?{" "}
-              <a
-                href="/register"
-                className="text-gray-900 font-medium underline"
-              >
-                Register
-              </a>
-            </p>
-          </div>
-        </div>
-      )}
-    </>
+          <span>{isLoading ? "Signing in..." : "Sign in to your account"}</span>
+          <span
+            aria-hidden="true"
+            className="text-lg transition-transform group-hover:translate-x-1"
+          >
+            &#8599;
+          </span>
+        </button>
+      </form>
+    </AuthLayout>
   );
 };
 

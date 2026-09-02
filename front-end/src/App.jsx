@@ -18,6 +18,7 @@ import CategoryPage from "./pages/CategoryPage";
 import CartPage from "./pages/CartPage";
 import PurchaseSuccessPage from "./pages/PurchaseSuccessPage";
 import PurchaseCancelPage from "./pages/PurchaseCancelPage";
+import OrdersPage from "./pages/OrdersPage";
 import DetailedCard from "./pages/DetailedCard";
 import AllProducts from "./pages/AllProducts";
 import AboutPage from "./pages/AboutPage";
@@ -34,6 +35,16 @@ const getLoginDestination = (returnTo) => {
 
     if (target.pathname === "/cart" && !target.search && !target.hash) {
       return "/cart";
+    }
+    if (target.pathname === "/orders" && !target.search && !target.hash) {
+      return "/orders";
+    }
+    if (
+      /^\/orders\/[a-f\d]{24}$/i.test(target.pathname) &&
+      !target.search &&
+      !target.hash
+    ) {
+      return target.pathname;
     }
     if (target.pathname !== "/purchase-success") return "/";
 
@@ -59,6 +70,8 @@ function App() {
   const hasCustomShell =
     isAuthPage ||
     pathname === "/cart" ||
+    pathname === "/orders" ||
+    pathname.startsWith("/orders/") ||
     pathname === "/purchase-success" ||
     pathname === "/purchase-cancel";
   const { user, checkingAuth } = useSelector((state) => state.auth);
@@ -155,6 +168,32 @@ function App() {
         <Route
           path="/purchase-cancel"
           element={<PurchaseCancelPage />}
+        />
+        <Route
+          path="/orders"
+          element={
+            user ? (
+              <OrdersPage />
+            ) : (
+              <Navigate
+                to={`/login?returnTo=${encodeURIComponent(pathname)}`}
+                replace
+              />
+            )
+          }
+        />
+        <Route
+          path="/orders/:orderId"
+          element={
+            user ? (
+              <OrdersPage />
+            ) : (
+              <Navigate
+                to={`/login?returnTo=${encodeURIComponent(pathname)}`}
+                replace
+              />
+            )
+          }
         />
         <Route path="/product/:id" element={<DetailedCard />} />
         <Route path="/products" element={<AllProducts />} />

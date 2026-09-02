@@ -96,12 +96,20 @@ const Header = () => {
         <div className="flex items-center gap-4">
           {/* Login / Logout */}
           {user ? (
-            <button
-              onClick={() => dispatch(logoutUser())}
-              className="hidden text-sm font-medium hover:underline md:block"
-            >
-              Logout
-            </button>
+            <>
+              <button
+                onClick={() => navigate("/orders")}
+                className="hidden text-sm font-medium hover:underline md:block"
+              >
+                My orders
+              </button>
+              <button
+                onClick={() => dispatch(logoutUser())}
+                className="hidden text-sm font-medium hover:underline md:block"
+              >
+                Logout
+              </button>
+            </>
           ) : (
             <div className="hidden items-center gap-2 md:flex">
               <button onClick={() => navigate("/register")}>Register</button>
@@ -221,6 +229,18 @@ const Header = () => {
                 className="border-b px-6 py-4 text-left hover:bg-gray-100"
               >
                 {user.role === "admin" ? "Admin Panel" : "Seller Panel"}
+              </button>
+            )}
+
+            {user && (
+              <button
+                onClick={() => {
+                  navigate("/orders");
+                  setIsMobileOpen(false);
+                }}
+                className="border-b px-6 py-4 text-left hover:bg-gray-100"
+              >
+                My orders
               </button>
             )}
 

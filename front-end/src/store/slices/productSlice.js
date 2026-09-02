@@ -4,6 +4,8 @@ import toast from "react-hot-toast";
 
 const initialState = {
   products: [],
+  allProductsStatus: "idle",
+  allProductsError: null,
   sellerProducts: [],
   sellerProductsLoading: false,
   sellerProductsError: null,
@@ -22,10 +24,12 @@ export const createProduct = createAsyncThunk(
       toast.success("Product created successfully");
       return data.data;
     } catch (error) {
-      toast.error(error.response?.data?.message || "Failed to create product");
-      return rejectWithValue(
-        error.response?.data?.message || "Failed to create product",
-      );
+      const message =
+        error.response?.data?.error?.message ||
+        error.response?.data?.message ||
+        "Failed to create product";
+      toast.error(message);
+      return rejectWithValue(message);
     }
   },
 );
@@ -35,12 +39,17 @@ export const fetchAllProducts = createAsyncThunk(
   async (_, { rejectWithValue }) => {
     try {
       const { data } = await axios.get("/products");
+      if (!Array.isArray(data.data)) {
+        return rejectWithValue("The products response was invalid.");
+      }
       return data.data;
     } catch (error) {
-      toast.error(error.response?.data?.message || "Failed to fetch products");
-      return rejectWithValue(
-        error.response?.data?.message || "Failed to fetch products",
-      );
+      const message =
+        error.response?.data?.error?.message ||
+        error.response?.data?.message ||
+        "Failed to fetch products";
+      toast.error(message);
+      return rejectWithValue(message);
     }
   },
 );
@@ -133,10 +142,12 @@ export const deleteProduct = createAsyncThunk(
       toast.success("Product deleted successfully");
       return productId;
     } catch (error) {
-      toast.error(error.response?.data?.message || "Failed to delete product");
-      return rejectWithValue(
-        error.response?.data?.message || "Failed to delete product",
-      );
+      const message =
+        error.response?.data?.error?.message ||
+        error.response?.data?.message ||
+        "Failed to delete product";
+      toast.error(message);
+      return rejectWithValue(message);
     }
   },
 );
@@ -152,12 +163,12 @@ export const toggleFeatured = createAsyncThunk(
         isFeatured: data.data?.isFeatured ?? data.isFeatured ?? false,
       };
     } catch (error) {
-      toast.error(
-        error.response?.data?.message || "Failed to update featured status",
-      );
-      return rejectWithValue(
-        error.response?.data?.message || "Failed to update featured status",
-      );
+      const message =
+        error.response?.data?.error?.message ||
+        error.response?.data?.message ||
+        "Failed to update featured status";
+      toast.error(message);
+      return rejectWithValue(message);
     }
   },
 );
@@ -184,14 +195,18 @@ const productSlice = createSlice({
         state.loading = false;
       })
       .addCase(fetchAllProducts.pending, (state) => {
-        state.loading = true;
+        state.allProductsStatus = "loading";
+        state.allProductsError = null;
       })
       .addCase(fetchAllProducts.fulfilled, (state, action) => {
         state.products = action.payload;
-        state.loading = false;
+        state.allProductsStatus = "succeeded";
+        state.allProductsError = null;
       })
-      .addCase(fetchAllProducts.rejected, (state) => {
-        state.loading = false;
+      .addCase(fetchAllProducts.rejected, (state, action) => {
+        state.allProductsStatus = "failed";
+        state.allProductsError =
+          action.payload || "Failed to fetch products";
       })
       .addCase(fetchSellerProducts.pending, (state) => {
         state.sellerProductsLoading = true;

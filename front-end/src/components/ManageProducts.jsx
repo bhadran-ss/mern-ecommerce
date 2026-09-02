@@ -11,18 +11,19 @@ const ManageProducts = ({ canFeature = false, items, variant = "default" }) => {
   const storedProducts = useSelector((state) => state.products.products);
   const products = items ?? storedProducts;
   const isSellerVariant = variant === "seller";
+  const isThemedVariant = isSellerVariant || variant === "admin";
   if (products.length === 0) {
     return (
       <div
         className={`p-6 ${
-          isSellerVariant
+          isThemedVariant
             ? "border border-white/10 bg-[#181815]/65"
             : "mx-auto mt-10 max-w-6xl rounded-xl bg-white shadow"
         }`}
       >
         <h2
           className={`mb-3 text-center ${
-            isSellerVariant
+            isThemedVariant
               ? "font-serif text-2xl font-light text-[#f4f1e9]"
               : "text-2xl font-semibold"
           }`}
@@ -31,10 +32,12 @@ const ManageProducts = ({ canFeature = false, items, variant = "default" }) => {
         </h2>
         <p
           className={`mb-0 text-center text-sm ${
-            isSellerVariant ? "text-white/75" : "text-gray-600"
+            isThemedVariant ? "text-white/75" : "text-gray-600"
           }`}
         >
-          Use “Add a new listing” to publish your first product.
+          {isSellerVariant
+            ? "Use “Add a new listing” to publish your first product."
+            : "Use “Add product” to add the first item to the catalog."}
         </p>
       </div>
     );
@@ -43,7 +46,7 @@ const ManageProducts = ({ canFeature = false, items, variant = "default" }) => {
   return (
     <div
       className={`p-4 sm:p-6 ${
-        isSellerVariant
+        isThemedVariant
           ? "border border-white/10 bg-[#181815]/65"
           : "mx-auto mt-10 max-w-6xl rounded-xl bg-white shadow"
       }`}
@@ -51,16 +54,20 @@ const ManageProducts = ({ canFeature = false, items, variant = "default" }) => {
       <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
         <h2
           className={`mb-0 ${
-            isSellerVariant
+            isThemedVariant
               ? "font-serif text-2xl font-light text-[#f4f1e9]"
               : "text-2xl font-semibold"
           }`}
         >
-          {isSellerVariant ? "Your listings" : "View Products"}
+          {isSellerVariant
+            ? "Your listings"
+            : variant === "admin"
+              ? "Catalog products"
+              : "View Products"}
         </h2>
         <span
           className={`text-xs tracking-wide ${
-            isSellerVariant ? "text-white/75" : "text-gray-500"
+            isThemedVariant ? "text-white/75" : "text-gray-500"
           }`}
         >
           {products.length} {products.length === 1 ? "product" : "products"}
@@ -70,14 +77,14 @@ const ManageProducts = ({ canFeature = false, items, variant = "default" }) => {
       <div className="hidden md:block overflow-x-auto">
         <table
           className={`min-w-full table-auto border text-left text-sm ${
-            isSellerVariant
+            isThemedVariant
               ? "border-white/10 text-white/75"
               : "border-gray-200 text-gray-700"
           }`}
         >
           <thead
             className={`uppercase text-xs tracking-wide ${
-              isSellerVariant
+              isThemedVariant
                 ? "bg-white/[0.04] text-white/75"
                 : "bg-gray-100 text-gray-600"
             }`}
@@ -94,14 +101,14 @@ const ManageProducts = ({ canFeature = false, items, variant = "default" }) => {
           </thead>
           <tbody
             className={
-              isSellerVariant ? "text-white/85" : "text-gray-700"
+              isThemedVariant ? "text-white/85" : "text-gray-700"
             }
           >
             {products.map((product) => (
               <tr
                 key={product._id}
                 className={`border-t transition ${
-                  isSellerVariant
+                  isThemedVariant
                     ? "border-white/10 hover:bg-white/[0.035]"
                     : "hover:bg-gray-100"
                 }`}
@@ -139,7 +146,7 @@ const ManageProducts = ({ canFeature = false, items, variant = "default" }) => {
                     aria-label={`Delete ${product.name}`}
                     onClick={() => dispatch(deleteProductThunk(product._id))}
                     className={`p-2 text-white transition ${
-                      isSellerVariant
+                      isThemedVariant
                         ? "border border-rose-300/20 bg-rose-400/10 hover:bg-rose-400/20"
                         : "rounded-full bg-red-500 hover:bg-red-600"
                     }`}
@@ -158,7 +165,7 @@ const ManageProducts = ({ canFeature = false, items, variant = "default" }) => {
           <div
             key={product._id}
             className={`border p-4 ${
-              isSellerVariant
+              isThemedVariant
                 ? "border-white/10 bg-white/[0.025]"
                 : "rounded-lg border-gray-200 shadow-sm"
             }`}
@@ -172,21 +179,21 @@ const ManageProducts = ({ canFeature = false, items, variant = "default" }) => {
               <div className="min-w-0 flex-1">
                 <h3
                   className={`text-sm font-semibold ${
-                    isSellerVariant ? "text-[#f4f1e9]" : "text-gray-800"
+                    isThemedVariant ? "text-[#f4f1e9]" : "text-gray-800"
                   }`}
                 >
                   {product.name}
                 </h3>
                 <p
                   className={`text-xs capitalize ${
-                    isSellerVariant ? "text-white/70" : "text-gray-600"
+                    isThemedVariant ? "text-white/70" : "text-gray-600"
                   }`}
                 >
                   {product.category}
                 </p>
                 <p
                   className={
-                    isSellerVariant
+                    isThemedVariant
                       ? "text-xs text-white/85"
                       : "text-xs text-gray-700"
                   }
@@ -195,7 +202,7 @@ const ManageProducts = ({ canFeature = false, items, variant = "default" }) => {
                 </p>
                 <p
                   className={
-                    isSellerVariant
+                    isThemedVariant
                       ? "text-xs text-white/85"
                       : "text-xs text-gray-700"
                   }
@@ -225,7 +232,7 @@ const ManageProducts = ({ canFeature = false, items, variant = "default" }) => {
                 aria-label={`Delete ${product.name}`}
                 onClick={() => dispatch(deleteProductThunk(product._id))}
                 className={`p-2 text-white transition ${
-                  isSellerVariant
+                  isThemedVariant
                     ? "border border-rose-300/20 bg-rose-400/10 hover:bg-rose-400/20"
                     : "rounded-full bg-red-500 hover:bg-red-600"
                 }`}

@@ -75,7 +75,8 @@ function App() {
     pathname.startsWith("/orders/") ||
     pathname === "/purchase-success" ||
     pathname === "/purchase-cancel" ||
-    pathname === "/seller-panel";
+    pathname === "/seller-panel" ||
+    pathname === "/secret-panel";
   const { user, checkingAuth } = useSelector((state) => state.auth);
   const featuredProducts = useSelector(
     (state) => state.products.featuredProducts,

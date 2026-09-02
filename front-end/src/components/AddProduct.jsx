@@ -5,6 +5,7 @@ import { createProduct as createProductThunk } from "../store/slices/productSlic
 
 const AddProduct = ({ variant = "default", onCreated }) => {
   const isSellerVariant = variant === "seller";
+  const isThemedVariant = isSellerVariant || variant === "admin";
   const categorys = ["jeans", "shirts", "suits", "bags", "jackets", "shoes"];
   const [newproduct, setNewProduct] = useState({
     name: "",
@@ -47,7 +48,7 @@ const AddProduct = ({ variant = "default", onCreated }) => {
         onCreated?.();
       });
   };
-  if (loading && !isSellerVariant) {
+  if (loading && !isThemedVariant) {
     return (
       <div
         id="preloader"
@@ -61,30 +62,30 @@ const AddProduct = ({ variant = "default", onCreated }) => {
   return (
     <div
       className={
-        isSellerVariant
+        isThemedVariant
           ? "mx-auto max-w-3xl"
           : "mx-auto mt-10 max-w-2xl rounded-lg bg-white p-6 shadow"
       }
     >
       <h2
         className={
-          isSellerVariant
+          isThemedVariant
             ? "mb-6 font-serif text-2xl font-light text-[#f4f1e9]"
             : "mb-6 text-center text-3xl font-semibold"
         }
       >
-        {isSellerVariant ? "Add a product" : "Add New Product"}
+        {isThemedVariant ? "Add a product" : "Add New Product"}
       </h2>
       <form
         onSubmit={handleSubmit}
-        className={`space-y-5 ${isSellerVariant ? "text-[#f4f1e9]" : ""}`}
+        className={`space-y-5 ${isThemedVariant ? "text-[#f4f1e9]" : ""}`}
         aria-busy={loading}
       >
         <div>
           <label
             htmlFor="new-product-name"
             className={`mb-1 block font-medium ${
-              isSellerVariant
+              isThemedVariant
                 ? "text-[11px] font-semibold uppercase tracking-[0.16em] text-white/80"
                 : ""
             }`}
@@ -95,7 +96,7 @@ const AddProduct = ({ variant = "default", onCreated }) => {
             id="new-product-name"
             type="text"
             className={`w-full border px-3 py-2 focus:outline-none focus:ring-2 ${
-              isSellerVariant
+              isThemedVariant
                 ? "border-white/15 bg-white/[0.045] py-3 text-sm text-[#f4f1e9] placeholder:text-white/30 focus:border-[#c6b2ff]/80 focus:ring-[#c6b2ff]/20"
                 : "rounded border-gray-300 focus:ring-purple-500"
             }`}
@@ -111,7 +112,7 @@ const AddProduct = ({ variant = "default", onCreated }) => {
           <label
             htmlFor="new-product-description"
             className={`mb-1 block font-medium ${
-              isSellerVariant
+              isThemedVariant
                 ? "text-[11px] font-semibold uppercase tracking-[0.16em] text-white/80"
                 : ""
             }`}
@@ -122,7 +123,7 @@ const AddProduct = ({ variant = "default", onCreated }) => {
             id="new-product-description"
             rows="4"
             className={`w-full border px-3 py-2 focus:outline-none focus:ring-2 ${
-              isSellerVariant
+              isThemedVariant
                 ? "border-white/15 bg-white/[0.045] text-sm text-[#f4f1e9] placeholder:text-white/30 focus:border-[#c6b2ff]/80 focus:ring-[#c6b2ff]/20"
                 : "rounded border-gray-300 focus:ring-purple-500"
             }`}
@@ -138,7 +139,7 @@ const AddProduct = ({ variant = "default", onCreated }) => {
           <label
             htmlFor="new-product-category"
             className={`mb-1 block font-medium ${
-              isSellerVariant
+              isThemedVariant
                 ? "text-[11px] font-semibold uppercase tracking-[0.16em] text-white/80"
                 : ""
             }`}
@@ -148,7 +149,7 @@ const AddProduct = ({ variant = "default", onCreated }) => {
           <select
             id="new-product-category"
             className={`w-full border px-3 py-2 focus:outline-none focus:ring-2 ${
-              isSellerVariant
+              isThemedVariant
                 ? "border-white/15 bg-[#1a191b] text-sm text-[#f4f1e9] focus:border-[#c6b2ff]/80 focus:ring-[#c6b2ff]/20"
                 : "rounded border-gray-300 focus:ring-purple-500"
             }`}
@@ -169,7 +170,7 @@ const AddProduct = ({ variant = "default", onCreated }) => {
           <label
             htmlFor="new-product-price"
             className={`mb-1 block font-medium ${
-              isSellerVariant
+              isThemedVariant
                 ? "text-[11px] font-semibold uppercase tracking-[0.16em] text-white/80"
                 : ""
             }`}
@@ -179,10 +180,10 @@ const AddProduct = ({ variant = "default", onCreated }) => {
           <input
             id="new-product-price"
             type="number"
-            min={isSellerVariant ? "0" : undefined}
-            step={isSellerVariant ? "0.01" : undefined}
+            min={isThemedVariant ? "0" : undefined}
+            step={isThemedVariant ? "0.01" : undefined}
             className={`w-full border px-3 py-2 focus:outline-none focus:ring-2 ${
-              isSellerVariant
+              isThemedVariant
                 ? "border-white/15 bg-white/[0.045] text-sm text-[#f4f1e9] focus:border-[#c6b2ff]/80 focus:ring-[#c6b2ff]/20"
                 : "rounded border-gray-300 focus:ring-purple-500"
             }`}
@@ -201,7 +202,7 @@ const AddProduct = ({ variant = "default", onCreated }) => {
           <label
             htmlFor="new-product-stock"
             className={`mb-1 block font-medium ${
-              isSellerVariant
+              isThemedVariant
                 ? "text-[11px] font-semibold uppercase tracking-[0.16em] text-white/80"
                 : ""
             }`}
@@ -213,7 +214,7 @@ const AddProduct = ({ variant = "default", onCreated }) => {
             type="number"
             min="0"
             className={`w-full border px-3 py-2 focus:outline-none focus:ring-2 ${
-              isSellerVariant
+              isThemedVariant
                 ? "border-white/15 bg-white/[0.045] text-sm text-[#f4f1e9] focus:border-[#c6b2ff]/80 focus:ring-[#c6b2ff]/20"
                 : "rounded border-gray-300 focus:ring-purple-500"
             }`}
@@ -232,7 +233,7 @@ const AddProduct = ({ variant = "default", onCreated }) => {
           <label
             htmlFor="new-product-image"
             className={`mb-1 block font-medium ${
-              isSellerVariant
+              isThemedVariant
                 ? "text-[11px] font-semibold uppercase tracking-[0.16em] text-white/80"
                 : ""
             }`}
@@ -243,7 +244,7 @@ const AddProduct = ({ variant = "default", onCreated }) => {
             <label
               htmlFor="new-product-image"
               className={`flex cursor-pointer items-center gap-2 text-sm font-medium ${
-                isSellerVariant
+                isThemedVariant
                   ? "text-[#e3d8ff]"
                   : "text-purple-600"
               }`}
@@ -252,7 +253,7 @@ const AddProduct = ({ variant = "default", onCreated }) => {
               <input
                 id="new-product-image"
                 type="file"
-                className={isSellerVariant ? "sr-only" : "hidden"}
+                className={isThemedVariant ? "sr-only" : "hidden"}
                 accept="image/jpeg,image/png,image/webp"
                 onChange={handleImageChange}
               />
@@ -271,14 +272,14 @@ const AddProduct = ({ variant = "default", onCreated }) => {
           type="submit"
           disabled={loading}
           className={`w-full px-4 py-3 text-sm font-semibold transition disabled:cursor-wait disabled:opacity-60 ${
-            isSellerVariant
+            isThemedVariant
               ? "border border-[#c6b2ff] bg-[#c6b2ff] text-[#17151b] hover:bg-[#d5c8ff] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#c6b2ff]"
               : "rounded bg-black text-white hover:bg-gray-800"
           }`}
         >
           {loading
             ? "Publishing listing..."
-            : isSellerVariant
+            : isThemedVariant
               ? "Publish listing"
               : "Add Product"}
         </button>

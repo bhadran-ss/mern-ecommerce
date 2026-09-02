@@ -11,9 +11,18 @@ const initialState = {
   sellerProductsError: null,
   loading: false,
   categoryProducts: [],
+  categoryProductsStatus: "idle",
+  categoryProductsError: null,
+  categoryProductsRequestId: null,
   detailedProduct: null,
+  detailedProductStatus: "idle",
+  detailedProductError: null,
+  detailedProductRequestId: null,
   featuredProducts: [],
   searchResult: [],
+  searchStatus: "idle",
+  searchError: null,
+  searchRequestId: null,
 };
 
 export const createProduct = createAsyncThunk(
@@ -79,14 +88,21 @@ export const fetchProduct = createAsyncThunk(
   async (id, { rejectWithValue }) => {
     try {
       const { data } = await axios.get(`/products/${id}`);
+      if (
+        !data.data ||
+        typeof data.data !== "object" ||
+        Array.isArray(data.data)
+      ) {
+        return rejectWithValue("The product response was invalid.");
+      }
       return data.data;
     } catch (error) {
-      toast.error(
-        error.response?.data?.message || "Failed to fetch product details",
-      );
-      return rejectWithValue(
-        error.response?.data?.message || "Failed to fetch product details",
-      );
+      const message =
+        error.response?.data?.error?.message ||
+        error.response?.data?.message ||
+        "Failed to fetch product details";
+      toast.error(message);
+      return rejectWithValue(message);
     }
   },
 );
@@ -95,10 +111,19 @@ export const getSearchResult = createAsyncThunk(
   "products/getSearchResult",
   async (searchTerm, { rejectWithValue }) => {
     try {
-      const { data } = await axios.get(`/products/search?name=${searchTerm}`);
+      const { data } = await axios.get(
+        `/products/search?name=${encodeURIComponent(searchTerm)}`,
+      );
+      if (!Array.isArray(data.data)) {
+        return rejectWithValue("The search response was invalid.");
+      }
       return data.data;
     } catch (error) {
-      return rejectWithValue(error.response?.data?.message || "Search failed");
+      const message =
+        error.response?.data?.error?.message ||
+        error.response?.data?.message ||
+        "Search failed";
+      return rejectWithValue(message);
     }
   },
 );
@@ -124,11 +149,18 @@ export const fetchProductByCategory = createAsyncThunk(
   "products/fetchProductByCategory",
   async (category, { rejectWithValue }) => {
     try {
-      const { data } = await axios.get(`/products/category/${category}`);
+      const { data } = await axios.get(
+        `/products/category/${encodeURIComponent(category)}`,
+      );
+      if (!Array.isArray(data)) {
+        return rejectWithValue("The category response was invalid.");
+      }
       return data;
     } catch (error) {
       return rejectWithValue(
-        error.response?.data?.message || "Failed to fetch products by category",
+        error.response?.data?.error?.message ||
+          error.response?.data?.message ||
+          "Failed to fetch products by category",
       );
     }
   },
@@ -179,6 +211,9 @@ const productSlice = createSlice({
   reducers: {
     clearSearchResult: (state) => {
       state.searchResult = [];
+      state.searchStatus = "idle";
+      state.searchError = null;
+      state.searchRequestId = null;
     },
   },
   extraReducers: (builder) => {
@@ -222,26 +257,46 @@ const productSlice = createSlice({
         state.sellerProductsError =
           action.payload || "Failed to fetch your products";
       })
-      .addCase(fetchProduct.pending, (state) => {
-        state.loading = true;
+      .addCase(fetchProduct.pending, (state, action) => {
+        state.detailedProductRequestId = action.meta.requestId;
+        state.detailedProduct = null;
+        state.detailedProductStatus = "loading";
+        state.detailedProductError = null;
       })
       .addCase(fetchProduct.fulfilled, (state, action) => {
+        if (state.detailedProductRequestId !== action.meta.requestId) return;
         state.detailedProduct = action.payload;
-        state.loading = false;
+        state.detailedProductStatus = "succeeded";
+        state.detailedProductError = null;
+        state.detailedProductRequestId = null;
       })
-      .addCase(fetchProduct.rejected, (state) => {
-        state.loading = false;
+      .addCase(fetchProduct.rejected, (state, action) => {
+        if (state.detailedProductRequestId !== action.meta.requestId) return;
+        state.detailedProduct = null;
+        state.detailedProductStatus = "failed";
+        state.detailedProductError =
+          action.payload || "Failed to fetch product details";
+        state.detailedProductRequestId = null;
       })
-      .addCase(getSearchResult.pending, (state) => {
-        state.loading = true;
+      .addCase(getSearchResult.pending, (state, action) => {
+        state.searchResult = [];
+        state.searchStatus = "loading";
+        state.searchError = null;
+        state.searchRequestId = action.meta.requestId;
       })
       .addCase(getSearchResult.fulfilled, (state, action) => {
+        if (state.searchRequestId !== action.meta.requestId) return;
         state.searchResult = action.payload;
-        state.loading = false;
+        state.searchStatus = "succeeded";
+        state.searchError = null;
+        state.searchRequestId = null;
       })
-      .addCase(getSearchResult.rejected, (state) => {
+      .addCase(getSearchResult.rejected, (state, action) => {
+        if (state.searchRequestId !== action.meta.requestId) return;
         state.searchResult = [];
-        state.loading = false;
+        state.searchStatus = "failed";
+        state.searchError = action.payload || "Search failed";
+        state.searchRequestId = null;
       })
       .addCase(getFeaturedProducts.pending, (state) => {
         state.loading = true;
@@ -253,8 +308,24 @@ const productSlice = createSlice({
       .addCase(getFeaturedProducts.rejected, (state) => {
         state.loading = false;
       })
+      .addCase(fetchProductByCategory.pending, (state, action) => {
+        state.categoryProductsStatus = "loading";
+        state.categoryProductsError = null;
+        state.categoryProductsRequestId = action.meta.requestId;
+      })
       .addCase(fetchProductByCategory.fulfilled, (state, action) => {
+        if (state.categoryProductsRequestId !== action.meta.requestId) return;
         state.categoryProducts = action.payload;
+        state.categoryProductsStatus = "succeeded";
+        state.categoryProductsError = null;
+        state.categoryProductsRequestId = null;
+      })
+      .addCase(fetchProductByCategory.rejected, (state, action) => {
+        if (state.categoryProductsRequestId !== action.meta.requestId) return;
+        state.categoryProductsStatus = "failed";
+        state.categoryProductsError =
+          action.payload || "Failed to fetch products by category";
+        state.categoryProductsRequestId = null;
       })
       .addCase(deleteProduct.fulfilled, (state, action) => {
         state.products = state.products.filter(

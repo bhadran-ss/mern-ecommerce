@@ -28,6 +28,19 @@ const getAllProducts = async (req, res, next) => {
     return next(error);
   }
 };
+
+const getSellerProducts = async (req, res, next) => {
+  try {
+    const products = await Product.find({ sellerId: req.user._id });
+    return res.status(200).json({
+      success: true,
+      count: products.length,
+      data: products,
+    });
+  } catch (error) {
+    return next(error);
+  }
+};
 const getFeaturedProducts = async (req, res, next) => {
   try {
     const products = await Product.find({ isFeatured: true });
@@ -240,6 +253,10 @@ const toggleFeaturedProduct = async (req, res, next) => {
     await product.save();
     res.status(200).json({
       success: true,
+      data: {
+        _id: product._id,
+        isFeatured: product.isFeatured,
+      },
       message: `Product ${
         product.isFeatured ? "featured" : "unfeatured"
       } successfully`,
@@ -250,6 +267,7 @@ const toggleFeaturedProduct = async (req, res, next) => {
 };
 export {
   getAllProducts,
+  getSellerProducts,
   getFeaturedProducts,
   createProduct,
   updateProduct,

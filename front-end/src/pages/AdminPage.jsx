@@ -39,7 +39,11 @@ const AdminPage = () => {
       </div>
 
       <div className="mt-10 w-full max-w-4xl">
-        {activeTab === "manageProducts" ? <ManageProducts /> : <AddProduct />}
+        {activeTab === "manageProducts" ? (
+          <ManageProducts canFeature />
+        ) : (
+          <AddProduct />
+        )}
       </div>
     </div>
   );

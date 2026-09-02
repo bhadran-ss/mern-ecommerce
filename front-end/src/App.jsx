@@ -3,6 +3,7 @@ import HomePage from "./pages/HomePage";
 import Header from "./components/Header";
 import Register from "./pages/Register";
 import AdminPage from "./pages/AdminPage";
+import SellerPage from "./pages/SellerPage";
 import { Toaster } from "react-hot-toast";
 import Login from "./pages/Login";
 import { useEffect } from "react";
@@ -73,7 +74,8 @@ function App() {
     pathname === "/orders" ||
     pathname.startsWith("/orders/") ||
     pathname === "/purchase-success" ||
-    pathname === "/purchase-cancel";
+    pathname === "/purchase-cancel" ||
+    pathname === "/seller-panel";
   const { user, checkingAuth } = useSelector((state) => state.auth);
   const featuredProducts = useSelector(
     (state) => state.products.featuredProducts,
@@ -143,11 +145,7 @@ function App() {
         <Route
           path="/seller-panel"
           element={
-            user?.role === "seller" || user?.role === "admin" ? (
-              <AdminPage />
-            ) : (
-              <Navigate to="/" />
-            )
+            user?.role === "seller" ? <SellerPage /> : <Navigate to="/" />
           }
         />
         <Route path="/category/:category" element={<CategoryPage />} />

@@ -4,6 +4,9 @@ import toast from "react-hot-toast";
 
 const initialState = {
   products: [],
+  sellerProducts: [],
+  sellerProductsLoading: false,
+  sellerProductsError: null,
   loading: false,
   categoryProducts: [],
   detailedProduct: null,
@@ -38,6 +41,26 @@ export const fetchAllProducts = createAsyncThunk(
       return rejectWithValue(
         error.response?.data?.message || "Failed to fetch products",
       );
+    }
+  },
+);
+
+export const fetchSellerProducts = createAsyncThunk(
+  "products/fetchSellerProducts",
+  async (_, { rejectWithValue }) => {
+    try {
+      const { data } = await axios.get("/products/mine");
+      if (!Array.isArray(data.data)) {
+        return rejectWithValue("The seller products response was invalid.");
+      }
+      return data.data;
+    } catch (error) {
+      const message =
+        error.response?.data?.error?.message ||
+        error.response?.data?.message ||
+        "Failed to fetch your products";
+      toast.error(message);
+      return rejectWithValue(message);
     }
   },
 );
@@ -154,6 +177,7 @@ const productSlice = createSlice({
       })
       .addCase(createProduct.fulfilled, (state, action) => {
         state.products.push(action.payload);
+        state.sellerProducts.push(action.payload);
         state.loading = false;
       })
       .addCase(createProduct.rejected, (state) => {
@@ -168,6 +192,20 @@ const productSlice = createSlice({
       })
       .addCase(fetchAllProducts.rejected, (state) => {
         state.loading = false;
+      })
+      .addCase(fetchSellerProducts.pending, (state) => {
+        state.sellerProductsLoading = true;
+        state.sellerProductsError = null;
+      })
+      .addCase(fetchSellerProducts.fulfilled, (state, action) => {
+        state.sellerProducts = action.payload;
+        state.sellerProductsLoading = false;
+        state.sellerProductsError = null;
+      })
+      .addCase(fetchSellerProducts.rejected, (state, action) => {
+        state.sellerProductsLoading = false;
+        state.sellerProductsError =
+          action.payload || "Failed to fetch your products";
       })
       .addCase(fetchProduct.pending, (state) => {
         state.loading = true;
@@ -205,6 +243,9 @@ const productSlice = createSlice({
       })
       .addCase(deleteProduct.fulfilled, (state, action) => {
         state.products = state.products.filter(
+          (product) => product._id !== action.payload,
+        );
+        state.sellerProducts = state.sellerProducts.filter(
           (product) => product._id !== action.payload,
         );
       })

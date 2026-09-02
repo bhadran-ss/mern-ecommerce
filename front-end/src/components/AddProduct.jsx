@@ -3,7 +3,8 @@ import { Upload } from "lucide-react";
 import { useDispatch, useSelector } from "react-redux";
 import { createProduct as createProductThunk } from "../store/slices/productSlice";
 
-const AddProduct = () => {
+const AddProduct = ({ variant = "default", onCreated }) => {
+  const isSellerVariant = variant === "seller";
   const categorys = ["jeans", "shirts", "suits", "bags", "jackets", "shoes"];
   const [newproduct, setNewProduct] = useState({
     name: "",
@@ -31,17 +32,22 @@ const AddProduct = () => {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    dispatch(createProductThunk(newproduct));
-    setNewProduct({
-      name: "",
-      description: "",
-      category: "jeans",
-      price: 0,
-      stock: 0,
-      image: null,
-    });
+    dispatch(createProductThunk(newproduct))
+      .then((result) => {
+        if (!createProductThunk.fulfilled.match(result)) return;
+
+        setNewProduct({
+          name: "",
+          description: "",
+          category: "jeans",
+          price: 0,
+          stock: 0,
+          image: null,
+        });
+        onCreated?.();
+      });
   };
-  if (loading) {
+  if (loading && !isSellerVariant) {
     return (
       <div
         id="preloader"
@@ -53,16 +59,46 @@ const AddProduct = () => {
   }
 
   return (
-    <div className="max-w-2xl mx-auto p-6 bg-white rounded-lg shadow mt-10">
-      <h1 className="text-3xl font-semibold mb-6 text-center">
-        Add New Product
-      </h1>
-      <form onSubmit={handleSubmit} className="space-y-5">
+    <div
+      className={
+        isSellerVariant
+          ? "mx-auto max-w-3xl"
+          : "mx-auto mt-10 max-w-2xl rounded-lg bg-white p-6 shadow"
+      }
+    >
+      <h2
+        className={
+          isSellerVariant
+            ? "mb-6 font-serif text-2xl font-light text-[#f4f1e9]"
+            : "mb-6 text-center text-3xl font-semibold"
+        }
+      >
+        {isSellerVariant ? "Add a product" : "Add New Product"}
+      </h2>
+      <form
+        onSubmit={handleSubmit}
+        className={`space-y-5 ${isSellerVariant ? "text-[#f4f1e9]" : ""}`}
+        aria-busy={loading}
+      >
         <div>
-          <label className="block font-medium mb-1">Product Name</label>
+          <label
+            htmlFor="new-product-name"
+            className={`mb-1 block font-medium ${
+              isSellerVariant
+                ? "text-[11px] font-semibold uppercase tracking-[0.16em] text-white/80"
+                : ""
+            }`}
+          >
+            Product name
+          </label>
           <input
+            id="new-product-name"
             type="text"
-            className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500"
+            className={`w-full border px-3 py-2 focus:outline-none focus:ring-2 ${
+              isSellerVariant
+                ? "border-white/15 bg-white/[0.045] py-3 text-sm text-[#f4f1e9] placeholder:text-white/30 focus:border-[#c6b2ff]/80 focus:ring-[#c6b2ff]/20"
+                : "rounded border-gray-300 focus:ring-purple-500"
+            }`}
             value={newproduct.name}
             onChange={(e) =>
               setNewProduct({ ...newproduct, name: e.target.value })
@@ -72,10 +108,24 @@ const AddProduct = () => {
         </div>
 
         <div>
-          <label className="block font-medium mb-1">Description</label>
+          <label
+            htmlFor="new-product-description"
+            className={`mb-1 block font-medium ${
+              isSellerVariant
+                ? "text-[11px] font-semibold uppercase tracking-[0.16em] text-white/80"
+                : ""
+            }`}
+          >
+            Description
+          </label>
           <textarea
+            id="new-product-description"
             rows="4"
-            className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500"
+            className={`w-full border px-3 py-2 focus:outline-none focus:ring-2 ${
+              isSellerVariant
+                ? "border-white/15 bg-white/[0.045] text-sm text-[#f4f1e9] placeholder:text-white/30 focus:border-[#c6b2ff]/80 focus:ring-[#c6b2ff]/20"
+                : "rounded border-gray-300 focus:ring-purple-500"
+            }`}
             value={newproduct.description}
             onChange={(e) =>
               setNewProduct({ ...newproduct, description: e.target.value })
@@ -85,9 +135,23 @@ const AddProduct = () => {
         </div>
 
         <div>
-          <label className="block font-medium mb-1">Category</label>
+          <label
+            htmlFor="new-product-category"
+            className={`mb-1 block font-medium ${
+              isSellerVariant
+                ? "text-[11px] font-semibold uppercase tracking-[0.16em] text-white/80"
+                : ""
+            }`}
+          >
+            Category
+          </label>
           <select
-            className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500"
+            id="new-product-category"
+            className={`w-full border px-3 py-2 focus:outline-none focus:ring-2 ${
+              isSellerVariant
+                ? "border-white/15 bg-[#1a191b] text-sm text-[#f4f1e9] focus:border-[#c6b2ff]/80 focus:ring-[#c6b2ff]/20"
+                : "rounded border-gray-300 focus:ring-purple-500"
+            }`}
             value={newproduct.category}
             onChange={(e) =>
               setNewProduct({ ...newproduct, category: e.target.value })
@@ -102,10 +166,26 @@ const AddProduct = () => {
         </div>
 
         <div>
-          <label className="block font-medium mb-1">Price (₹)</label>
+          <label
+            htmlFor="new-product-price"
+            className={`mb-1 block font-medium ${
+              isSellerVariant
+                ? "text-[11px] font-semibold uppercase tracking-[0.16em] text-white/80"
+                : ""
+            }`}
+          >
+            Price (₹)
+          </label>
           <input
+            id="new-product-price"
             type="number"
-            className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500"
+            min={isSellerVariant ? "0" : undefined}
+            step={isSellerVariant ? "0.01" : undefined}
+            className={`w-full border px-3 py-2 focus:outline-none focus:ring-2 ${
+              isSellerVariant
+                ? "border-white/15 bg-white/[0.045] text-sm text-[#f4f1e9] focus:border-[#c6b2ff]/80 focus:ring-[#c6b2ff]/20"
+                : "rounded border-gray-300 focus:ring-purple-500"
+            }`}
             value={newproduct.price}
             onChange={(e) =>
               setNewProduct({
@@ -118,11 +198,25 @@ const AddProduct = () => {
         </div>
 
         <div>
-          <label className="block font-medium mb-1">Stock</label>
+          <label
+            htmlFor="new-product-stock"
+            className={`mb-1 block font-medium ${
+              isSellerVariant
+                ? "text-[11px] font-semibold uppercase tracking-[0.16em] text-white/80"
+                : ""
+            }`}
+          >
+            Stock
+          </label>
           <input
+            id="new-product-stock"
             type="number"
             min="0"
-            className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500"
+            className={`w-full border px-3 py-2 focus:outline-none focus:ring-2 ${
+              isSellerVariant
+                ? "border-white/15 bg-white/[0.045] text-sm text-[#f4f1e9] focus:border-[#c6b2ff]/80 focus:ring-[#c6b2ff]/20"
+                : "rounded border-gray-300 focus:ring-purple-500"
+            }`}
             value={newproduct.stock}
             onChange={(e) =>
               setNewProduct({
@@ -135,13 +229,30 @@ const AddProduct = () => {
         </div>
 
         <div>
-          <label className="block font-medium mb-1">Image</label>
+          <label
+            htmlFor="new-product-image"
+            className={`mb-1 block font-medium ${
+              isSellerVariant
+                ? "text-[11px] font-semibold uppercase tracking-[0.16em] text-white/80"
+                : ""
+            }`}
+          >
+            Image
+          </label>
           <div className="flex items-center gap-3">
-            <label className="cursor-pointer flex items-center gap-2 text-sm text-purple-600 font-medium">
+            <label
+              htmlFor="new-product-image"
+              className={`flex cursor-pointer items-center gap-2 text-sm font-medium ${
+                isSellerVariant
+                  ? "text-[#e3d8ff]"
+                  : "text-purple-600"
+              }`}
+            >
               <Upload size={20} /> Upload Image
               <input
+                id="new-product-image"
                 type="file"
-                className="hidden"
+                className={isSellerVariant ? "sr-only" : "hidden"}
                 accept="image/jpeg,image/png,image/webp"
                 onChange={handleImageChange}
               />
@@ -158,9 +269,18 @@ const AddProduct = () => {
 
         <button
           type="submit"
-          className="w-full py-2 px-4 bg-black text-white rounded hover:bg-gray-800 transition"
+          disabled={loading}
+          className={`w-full px-4 py-3 text-sm font-semibold transition disabled:cursor-wait disabled:opacity-60 ${
+            isSellerVariant
+              ? "border border-[#c6b2ff] bg-[#c6b2ff] text-[#17151b] hover:bg-[#d5c8ff] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#c6b2ff]"
+              : "rounded bg-black text-white hover:bg-gray-800"
+          }`}
         >
-          Add Product
+          {loading
+            ? "Publishing listing..."
+            : isSellerVariant
+              ? "Publish listing"
+              : "Add Product"}
         </button>
       </form>
     </div>

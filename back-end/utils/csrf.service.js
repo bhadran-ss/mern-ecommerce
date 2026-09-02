@@ -13,10 +13,8 @@ export const createCsrfTokenService = ({
   secret = config.jwe.accessSecret,
 } = {}) => {
   const signingKey = createHash("sha256").update(`csrf-key:${secret}`).digest();
-  console.log("signingKey", signingKey.toString("base64url"));
   const sign = (value) =>
     createHmac("sha256", signingKey).update(value).digest();
-  console.log("sign", sign.toString("base64url"));
   return Object.freeze({
     createToken: () => {
       const value = randomBytes(32).toString("base64url");
@@ -31,8 +29,6 @@ export const createCsrfTokenService = ({
       if (separator <= 0) {
         return false;
       }
-
-      console.log("token", token);
 
       const value = token.slice(0, separator);
       const providedSignature = Buffer.from(

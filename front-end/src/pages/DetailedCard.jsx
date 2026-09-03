@@ -42,7 +42,7 @@ const DetailedCard = () => {
       <div
         role="status"
         aria-live="polite"
-        className="mx-auto my-16 max-w-3xl border border-gray-200 bg-white p-8 text-center text-sm text-gray-600"
+        className="mx-auto my-16 max-w-3xl border border-white/10 bg-[#181815]/70 p-8 text-center text-sm text-white/60"
       >
         Loading product details...
       </div>
@@ -51,32 +51,32 @@ const DetailedCard = () => {
 
   if (detailedProductStatus === "failed" || !detailedProduct) {
     return (
-      <main className="mx-auto my-10 w-full max-w-3xl px-4 sm:px-6">
+      <main className="relative isolate mx-auto my-10 w-full max-w-3xl px-4 text-[#f4f1e9] sm:px-6">
         <section
           role="alert"
-          className="border border-rose-200 bg-white p-6 text-center shadow-sm sm:p-10"
+          className="border border-rose-300/25 bg-[#181815]/80 p-6 text-center sm:p-10"
         >
-          <p className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-rose-700">
+          <p className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-rose-200">
             Product unavailable
           </p>
-          <h1 className="mb-3 text-2xl font-semibold text-gray-900">
+          <h1 className="mb-3 font-serif text-3xl font-light text-[#f4f1e9]">
             We couldn’t load this product.
           </h1>
-          <p className="mb-6 text-sm text-gray-600">
+          <p className="mb-6 text-sm text-white/60">
             {detailedProductError || "The product may have been removed."}
           </p>
           <div className="flex flex-wrap justify-center gap-3">
             <button
               type="button"
               onClick={() => dispatch(fetchProduct(id))}
-              className="inline-flex min-h-11 items-center gap-2 border border-gray-800 px-4 py-2 text-sm font-medium text-gray-900 transition hover:bg-gray-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gray-900"
+              className="inline-flex min-h-11 items-center gap-2 border border-[#c6b2ff] bg-[#c6b2ff] px-4 py-2 text-sm font-semibold text-[#17151b] transition hover:bg-[#d5c8ff] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#c6b2ff]"
             >
               <RotateCw size={15} aria-hidden="true" />
               Try again
             </button>
             <Link
               to="/products"
-              className="inline-flex min-h-11 items-center gap-2 border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 no-underline transition hover:bg-gray-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gray-900"
+              className="inline-flex min-h-11 items-center gap-2 border border-white/15 px-4 py-2 text-sm font-medium text-white/70 no-underline transition hover:bg-white/[0.05] hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#c6b2ff]"
             >
               <ArrowLeft size={15} aria-hidden="true" />
               Back to products
@@ -88,43 +88,55 @@ const DetailedCard = () => {
   }
 
   return (
-    <main className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 sm:py-12">
+    <main className="relative isolate flex-1 overflow-hidden bg-[#11110f] px-4 py-8 text-[#f4f1e9] selection:bg-[#c6b2ff] selection:text-[#17151b] sm:px-6 sm:py-12">
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0 -z-10 overflow-hidden"
+      >
+        <div className="absolute -left-52 -top-48 h-[34rem] w-[34rem] rounded-full bg-[#7b61a8]/20 blur-[120px]" />
+        <div className="absolute -bottom-56 right-[-10rem] h-[34rem] w-[34rem] rounded-full bg-[#555f44]/15 blur-[120px]" />
+        <div className="absolute inset-0 opacity-[0.08] [background-image:linear-gradient(rgba(255,255,255,.12)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,.12)_1px,transparent_1px)] [background-size:72px_72px]" />
+      </div>
+      <div className="mx-auto w-full max-w-[1440px]">
       <Link
         to="/products"
-        className="mb-6 inline-flex items-center gap-2 text-sm text-gray-600 no-underline transition hover:text-black focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-black"
+        className="mb-6 inline-flex items-center gap-2 text-xs font-medium tracking-wide text-white/60 no-underline transition hover:text-[#d9ccff] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#c6b2ff]"
       >
         <ArrowLeft size={16} aria-hidden="true" />
         Back to products
       </Link>
-      <article className="border border-gray-200 bg-white p-4 shadow-sm sm:p-6 lg:p-8">
+      <article className="border border-white/10 bg-[#181815]/75 p-4 sm:p-6 lg:p-8">
       <div className="flex flex-col gap-8 md:flex-row">
-        <div className="min-w-0 flex-1">
+        <div className="min-w-0 flex-1 border border-white/10 bg-white/[0.025] p-2 sm:p-4">
           <img
             src={detailedProduct.image}
             alt={detailedProduct.name}
-            className="w-full max-h-[500px] object-contain rounded-lg"
+            className="max-h-[500px] w-full object-contain"
           />
         </div>
 
         <div className="min-w-0 flex-1 space-y-6">
-          <h1 className="text-2xl font-bold text-gray-900 sm:text-3xl">
+          <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.24em] text-[#c6b2ff]">
+            Vistyle / product
+          </p>
+          <h1 className="font-serif text-3xl font-light leading-tight tracking-[-0.04em] text-[#f4f1e9] sm:text-4xl">
             {detailedProduct.name}
           </h1>
 
-          <div className="flex items-center gap-3 text-lg flex-wrap">
-            <span className="font-semibold text-gray-900">
+          <div className="flex flex-wrap items-center gap-3 text-lg">
+            <span className="font-medium text-[#f4f1e9]">
             ₹ {Number(detailedProduct.price).toFixed(2)}
             </span>
             {detailedProduct.isFeatured && (
-            <span className="border border-violet-200 bg-violet-50 px-2 py-1 text-xs font-medium text-violet-800">
+            <span className="border border-[#c6b2ff]/25 bg-[#c6b2ff]/[0.08] px-2 py-1 text-xs font-medium text-[#d9ccff]">
               Featured
               </span>
             )}
             <span
               className={`border px-2 py-1 text-xs font-semibold ${
                 isOutOfStock
-                  ? "border-rose-200 bg-rose-50 text-rose-800"
-                  : "border-emerald-200 bg-emerald-50 text-emerald-800"
+                  ? "border-rose-300/25 bg-rose-300/[0.08] text-rose-200"
+                  : "border-emerald-300/25 bg-emerald-300/[0.08] text-emerald-200"
               }`}
             >
               {isOutOfStock ? "Out of stock" : `${stockLeft} in stock`}
@@ -132,10 +144,10 @@ const DetailedCard = () => {
           </div>
 
           <div>
-            <h2 className="mb-1 text-base font-medium text-gray-900">
+            <h2 className="mb-2 font-serif text-xl font-light text-[#f4f1e9]">
               Description
             </h2>
-            <p className="text-sm text-gray-600">
+            <p className="text-sm leading-7 text-white/60">
               {detailedProduct.description}
             </p>
           </div>
@@ -145,10 +157,10 @@ const DetailedCard = () => {
               type="button"
               onClick={handleAddToCart}
               disabled={isOutOfStock}
-              className={`px-6 py-3 rounded-full transition ${
+              className={`min-h-12 border px-6 py-3 text-sm font-semibold transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#c6b2ff] ${
                 isOutOfStock
-                  ? "border border-gray-300 bg-gray-100 text-gray-400 cursor-not-allowed"
-                  : "border border-black text-black hover:bg-black hover:text-white"
+                  ? "border-white/10 bg-white/[0.04] text-white/35 cursor-not-allowed"
+                  : "border-[#c6b2ff] bg-[#c6b2ff] text-[#17151b] hover:bg-[#d5c8ff]"
               }`}
             >
               {isOutOfStock ? "Out of Stock" : "Add to Cart"}
@@ -157,6 +169,7 @@ const DetailedCard = () => {
         </div>
       </div>
       </article>
+      </div>
     </main>
   );
 };

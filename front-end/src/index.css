@@ -14,7 +14,8 @@
     font-family: "Montserrat", sans-serif;
     -webkit-font-smoothing: antialiased;
     font-smoothing: antialiased;
-    background: none;
+    background: #11110f;
+    color: #f4f1e9;
     overflow-x: hidden;
   }
 
@@ -25,9 +26,9 @@
   h5,
   h6 {
     margin: 0;
-    color: #111111;
+    color: #f4f1e9;
     font-weight: 500;
-    font-family: "Montserrat", sans-serif;
+    font-family: Georgia, "Times New Roman", serif;
   }
 
   h1 {
@@ -56,7 +57,7 @@
 
   p {
     font-size: 15px;
-    color: #7b7b7b;
+    color: rgba(244, 241, 233, 0.65);
     font-weight: 400;
     line-height: 1.6;
     font-family: "Montserrat", sans-serif;
@@ -65,20 +66,6 @@
 
   img {
     max-width: 100%;
-  }
-
-  input:focus,
-  select:focus,
-  button:focus,
-  textarea:focus {
-    outline: none;
-  }
-
-  a:hover,
-  a:focus {
-    text-decoration: none;
-    outline: none;
-    color: #fff;
   }
 
   ul,

@@ -110,19 +110,27 @@ function App() {
     return (
       <div
         id="preloader"
-        className={`fixed inset-0 z-50 flex items-center justify-center ${
-          hasCustomShell ? "bg-[#11110f]" : "bg-white"
-        }`}
+        className="fixed inset-0 z-50 flex items-center justify-center bg-[#11110f]"
       >
-        <div className={`loader ${hasCustomShell ? "auth-loader" : ""}`}></div>
+        <div className="loader auth-loader"></div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-white flex flex-col relative py-0 text-2xl">
+    <div className="relative flex min-h-screen flex-col bg-[#11110f] py-0 text-base text-[#f4f1e9]">
       {!hasCustomShell && <Header />}
-      <Toaster position="top-center" reverseOrder={false} />
+      <Toaster
+        position="top-center"
+        reverseOrder={false}
+        toastOptions={{
+          style: {
+            background: "#181815",
+            color: "#f4f1e9",
+            border: "1px solid rgba(255,255,255,.12)",
+          },
+        }}
+      />
       <Routes>
         <Route path="/" element={<HomePage />} />
         <Route

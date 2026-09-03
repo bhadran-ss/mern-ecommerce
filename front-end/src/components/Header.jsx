@@ -7,106 +7,119 @@ import toast from "react-hot-toast";
 import { logoutUser } from "../store/slices/authSlice";
 import { clearSearchResult } from "../store/slices/productSlice";
 
+const navItems = [
+  { label: "Home", path: "/" },
+  { label: "Shop", path: "/products" },
+  { label: "About", path: "/about" },
+  { label: "Contact", path: "/contact" },
+];
+
 const Header = () => {
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
-  const desktopSearchRef = useRef();
-  const mobileSearchRef = useRef();
-  const navItems = [
-    { label: "Home", path: "/" },
-    { label: "Shop", path: "/products" },
-    { label: "About", path: "/about" },
-    { label: "Contact", path: "/contact" },
-  ];
+  const desktopSearchRef = useRef(null);
+  const mobileSearchRef = useRef(null);
   const dispatch = useDispatch();
   const { user } = useSelector((state) => state.auth);
   const cart = useSelector((state) => state.cart.cart);
   const navigate = useNavigate();
-
-  const handleSearch = (inputRef) => {
-    const searchQuery = inputRef.current?.value.trim() || "";
-    if (searchQuery) {
-      navigate(`/products?search=${encodeURIComponent(searchQuery)}`);
-      setIsMobileOpen(false);
-    } else {
-      toast.error("Please enter a search term");
-    }
-  };
   const dashboardPath =
     user?.role === "admin"
       ? "/secret-panel"
       : user?.role === "seller"
         ? "/seller-panel"
         : null;
+
+  const handleSearch = (inputRef) => {
+    const searchQuery = inputRef.current?.value.trim() || "";
+    if (!searchQuery) {
+      toast.error("Please enter a search term");
+      return false;
+    }
+
+    dispatch(clearSearchResult());
+    navigate(`/products?search=${encodeURIComponent(searchQuery)}`);
+    setIsMobileOpen(false);
+    setIsSearchOpen(false);
+    return true;
+  };
+
+  const closeMobileMenu = () => setIsMobileOpen(false);
+  const closeSearch = () => setIsSearchOpen(false);
+
   return (
-    <header className="sticky top-0 z-50 w-full bg-white shadow-sm">
-      {/* Main Header */}
-      <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
-        {/* Logo */}
+    <header className="sticky top-0 z-50 w-full border-b border-white/10 bg-[#11110f]/95 text-[#f4f1e9] shadow-[0_8px_32px_rgba(0,0,0,.18)] backdrop-blur-md">
+      <div className="mx-auto flex min-h-[76px] max-w-[1440px] items-center justify-between gap-4 px-5 sm:px-8 lg:px-12">
         <Link
           to="/"
           aria-label="Vistyle home"
-          className="rounded-sm text-xl font-bold text-gray-900 no-underline hover:text-black focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-black md:text-2xl"
+          className="group inline-flex shrink-0 items-center gap-3 text-[#f4f1e9] no-underline transition hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#c6b2ff]"
         >
-          Vistyle
+          <span className="grid h-9 w-9 place-items-center border border-[#c6b2ff]/70 font-serif text-lg text-[#d9ccff] transition group-hover:bg-[#c6b2ff]/10">
+            V
+          </span>
+          <span className="text-xs font-semibold tracking-[0.28em]">
+            VISTYLE
+          </span>
         </Link>
 
-        {/* Desktop Navigation / Search */}
-        <div className="hidden flex-1 justify-center lg:flex">
+        <div className="hidden min-w-0 flex-1 justify-center px-6 lg:flex">
           {isSearchOpen ? (
             <form
-              className="flex w-full max-w-lg items-center gap-3 animate-in fade-in duration-200"
+              role="search"
+              className="flex w-full max-w-lg items-center gap-3 border-b border-white/20"
               onSubmit={(event) => {
                 event.preventDefault();
                 handleSearch(desktopSearchRef);
-                if (desktopSearchRef.current?.value.trim()) setIsSearchOpen(false);
               }}
             >
-              <BsSearch className="h-5 w-5 text-gray-400" aria-hidden="true" />
+              <BsSearch
+                className="h-4 w-4 shrink-0 text-white/45"
+                aria-hidden="true"
+              />
               <input
                 ref={desktopSearchRef}
                 aria-label="Search products"
                 type="search"
                 autoFocus
-                placeholder="Search products..."
-                className="w-full border-b border-gray-300 bg-transparent py-2 outline-none transition-all focus:border-black"
+                placeholder="Search the collection"
+                className="min-w-0 flex-1 border-0 bg-transparent py-3 text-sm text-[#f4f1e9] placeholder:text-white/35 focus:outline-none focus:ring-0"
               />
               <button
                 type="button"
                 aria-label="Close search"
-                onClick={() => setIsSearchOpen(false)}
-                className="rounded-sm text-gray-500 transition hover:text-black focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-black"
+                onClick={closeSearch}
+                className="rounded-sm p-1 text-white/55 transition hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#c6b2ff]"
               >
-                <XCircle size={22} aria-hidden="true" />
+                <XCircle size={19} aria-hidden="true" />
               </button>
             </form>
           ) : (
-            <nav className="flex items-center gap-8">
+            <nav aria-label="Main navigation" className="flex items-center gap-8">
               {navItems.map((item) => (
                 <Link
                   key={item.label}
                   to={item.path}
-                  onClick={() => item.label === "Shop" && dispatch(clearSearchResult())}
-                  className="group relative rounded-sm font-medium text-gray-900 no-underline transition hover:text-black focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-black"
+                  onClick={() => {
+                    if (item.label === "Shop") dispatch(clearSearchResult());
+                  }}
+                  className="group relative rounded-sm text-xs font-medium tracking-wide text-white/70 no-underline transition hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#c6b2ff]"
                 >
                   {item.label}
-
-                  <span className="absolute -bottom-1 left-0 h-[2px] w-full origin-left scale-x-0 bg-black transition-transform duration-300 group-hover:scale-x-100" />
+                  <span className="absolute -bottom-2 left-0 h-px w-full origin-left scale-x-0 bg-[#c6b2ff] transition-transform duration-300 group-hover:scale-x-100" />
                 </Link>
               ))}
             </nav>
           )}
         </div>
 
-        {/* Right Side */}
-        <div className="flex items-center gap-4">
-          {/* Login / Logout */}
+        <div className="flex shrink-0 items-center gap-3 sm:gap-5">
           {user ? (
             <>
               {user.role === "customer" && (
                 <Link
                   to="/orders"
-                  className="hidden rounded-sm text-sm font-medium hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-black md:block"
+                  className="hidden rounded-sm text-xs font-medium text-white/70 no-underline transition hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#c6b2ff] md:block"
                 >
                   My orders
                 </Link>
@@ -114,201 +127,187 @@ const Header = () => {
               <button
                 type="button"
                 onClick={() => dispatch(logoutUser())}
-                className="hidden rounded-sm text-sm font-medium hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-black md:block"
+                className="hidden rounded-sm text-xs font-medium text-white/70 transition hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#c6b2ff] md:block"
               >
-                Logout
+                Sign out
               </button>
             </>
           ) : (
-            <div className="hidden items-center gap-2 text-sm md:flex">
+            <div className="hidden items-center gap-3 text-xs md:flex">
               <Link
                 to="/register"
-                className="rounded-sm text-gray-900 no-underline hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-black"
+                className="rounded-sm text-white/70 no-underline transition hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#c6b2ff]"
               >
                 Register
               </Link>
-              <span>/</span>
+              <span aria-hidden="true" className="text-white/25">
+                /
+              </span>
               <Link
                 to="/login"
-                className="rounded-sm text-gray-900 no-underline hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-black"
+                className="rounded-sm text-white/70 no-underline transition hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#c6b2ff]"
               >
-                Login
+                Sign in
               </Link>
             </div>
           )}
 
-          {/* Search */}
-          <button
-            type="button"
-            aria-label="Search"
-            aria-expanded={isSearchOpen}
-            onClick={() => {
-              setIsSearchOpen((prev) => !prev);
-              setIsMobileOpen(false);
-            }}
-            className="rounded-sm transition duration-300 hover:scale-110 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-black"
-          >
-              <BsSearch
-                className="h-5 w-5 text-gray-700 hover:text-black"
-                aria-hidden="true"
-              />
-          </button>
-
-          {/* Dashboard */}
           {dashboardPath && (
             <Link
               to={dashboardPath}
-              className="hidden rounded-sm text-sm font-medium text-gray-900 no-underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-black md:block"
+              className="hidden rounded-sm text-xs font-medium text-[#d9ccff] no-underline transition hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#c6b2ff] md:block"
             >
               {user.role === "admin" ? "Admin" : "Seller"}
             </Link>
           )}
 
-          {/* Cart */}
+          <button
+            type="button"
+            aria-label={isSearchOpen ? "Close search" : "Search"}
+            aria-expanded={isSearchOpen}
+            onClick={() => {
+              setIsSearchOpen((open) => !open);
+              setIsMobileOpen(false);
+            }}
+            className="rounded-sm p-1 text-white/75 transition hover:text-[#d9ccff] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#c6b2ff]"
+          >
+            {isSearchOpen ? (
+              <XCircle size={19} aria-hidden="true" />
+            ) : (
+              <BsSearch className="h-4 w-4" aria-hidden="true" />
+            )}
+          </button>
+
           <Link
             to="/cart"
-            aria-label="Cart"
-            className="relative rounded-sm text-gray-900 no-underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-black"
+            aria-label={`Cart${cart.length > 0 ? `, ${cart.length} items` : ""}`}
+            className="relative rounded-sm p-1 text-white/75 no-underline transition hover:text-[#d9ccff] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#c6b2ff]"
           >
             <BsCartPlus className="h-5 w-5" aria-hidden="true" />
-
             {cart.length > 0 && (
-              <span className="absolute -right-2 -top-2 flex h-5 w-5 items-center justify-center rounded-full border bg-white text-xs">
+              <span className="absolute -right-2 -top-2 grid h-5 min-w-5 place-items-center border border-[#11110f] bg-[#c6b2ff] px-1 text-[10px] font-semibold text-[#17151b]">
                 {cart.length > 99 ? "99+" : cart.length}
               </span>
             )}
           </Link>
 
-          {/* Mobile Menu */}
           <button
             type="button"
-            className="rounded-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-black lg:hidden"
-            aria-label="Menu"
+            className="rounded-sm p-1 text-white/80 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#c6b2ff] lg:hidden"
+            aria-label={isMobileOpen ? "Close menu" : "Open menu"}
             aria-expanded={isMobileOpen}
             aria-controls="mobile-navigation"
             onClick={() => {
-              setIsMobileOpen(!isMobileOpen);
+              setIsMobileOpen((open) => !open);
               setIsSearchOpen(false);
             }}
           >
-            {isMobileOpen ? <X size={24} /> : <Menu size={24} />}
+            {isMobileOpen ? (
+              <X size={21} aria-hidden="true" />
+            ) : (
+              <Menu size={21} aria-hidden="true" />
+            )}
           </button>
         </div>
       </div>
 
-      {/* Mobile Menu */}
       {isMobileOpen && (
         <div
           id="mobile-navigation"
-          className="absolute left-0 top-full w-full border-t bg-white shadow-lg lg:hidden"
+          className="border-t border-white/10 bg-[#151513] lg:hidden"
         >
-          <nav className="flex flex-col">
+          <nav aria-label="Mobile navigation" className="flex flex-col px-5 py-2">
             {navItems.map((item) => (
               <Link
                 key={item.label}
                 to={item.path}
                 onClick={() => {
-                  setIsMobileOpen(false);
+                  closeMobileMenu();
                   if (item.label === "Shop") dispatch(clearSearchResult());
                 }}
-                className="border-b px-6 py-4 text-left text-gray-900 no-underline hover:bg-gray-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-inset focus-visible:outline-black"
+                className="border-b border-white/[0.07] py-4 text-sm text-white/75 no-underline transition hover:text-[#d9ccff] focus-visible:outline focus-visible:outline-2 focus-visible:outline-inset focus-visible:outline-[#c6b2ff]"
               >
                 {item.label}
               </Link>
             ))}
-
-            {!user && (
+            {!user ? (
               <>
                 <Link
                   to="/login"
-                  onClick={() => setIsMobileOpen(false)}
-                  className="border-b px-6 py-4 text-left text-gray-900 no-underline hover:bg-gray-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-inset focus-visible:outline-black"
+                  onClick={closeMobileMenu}
+                  className="border-b border-white/[0.07] py-4 text-sm text-white/75 no-underline hover:text-[#d9ccff] focus-visible:outline focus-visible:outline-2 focus-visible:outline-inset focus-visible:outline-[#c6b2ff]"
                 >
-                  Login
+                  Sign in
                 </Link>
-
                 <Link
                   to="/register"
-                  onClick={() => setIsMobileOpen(false)}
-                  className="border-b px-6 py-4 text-left text-gray-900 no-underline hover:bg-gray-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-inset focus-visible:outline-black"
-                  >
-                    Register
+                  onClick={closeMobileMenu}
+                  className="border-b border-white/[0.07] py-4 text-sm text-white/75 no-underline hover:text-[#d9ccff] focus-visible:outline focus-visible:outline-2 focus-visible:outline-inset focus-visible:outline-[#c6b2ff]"
+                >
+                  Create account
                 </Link>
               </>
-            )}
-
-            {dashboardPath && (
-              <Link
-                to={dashboardPath}
-                onClick={() => setIsMobileOpen(false)}
-                className="border-b px-6 py-4 text-left text-gray-900 no-underline hover:bg-gray-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-inset focus-visible:outline-black"
-              >
-                {user.role === "admin" ? "Admin Panel" : "Seller Panel"}
-              </Link>
-            )}
-
-            {user?.role === "customer" && (
-              <Link
-                to="/orders"
-                onClick={() => setIsMobileOpen(false)}
-                className="border-b px-6 py-4 text-left text-gray-900 no-underline hover:bg-gray-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-inset focus-visible:outline-black"
-              >
-                My orders
-              </Link>
-            )}
-
-            {user && (
-              <button
-                type="button"
-                onClick={() => {
-                  dispatch(logoutUser());
-                  setIsMobileOpen(false);
-                }}
-                className="px-6 py-4 text-left text-red-600 hover:bg-red-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-inset focus-visible:outline-red-700"
-              >
-                Logout
-              </button>
+            ) : (
+              <>
+                {dashboardPath && (
+                  <Link
+                    to={dashboardPath}
+                    onClick={closeMobileMenu}
+                    className="border-b border-white/[0.07] py-4 text-sm text-white/75 no-underline hover:text-[#d9ccff] focus-visible:outline focus-visible:outline-2 focus-visible:outline-inset focus-visible:outline-[#c6b2ff]"
+                  >
+                    {user.role === "admin" ? "Admin panel" : "Seller studio"}
+                  </Link>
+                )}
+                {user.role === "customer" && (
+                  <Link
+                    to="/orders"
+                    onClick={closeMobileMenu}
+                    className="border-b border-white/[0.07] py-4 text-sm text-white/75 no-underline hover:text-[#d9ccff] focus-visible:outline focus-visible:outline-2 focus-visible:outline-inset focus-visible:outline-[#c6b2ff]"
+                  >
+                    My orders
+                  </Link>
+                )}
+                <button
+                  type="button"
+                  onClick={() => {
+                    dispatch(logoutUser());
+                    closeMobileMenu();
+                  }}
+                  className="py-4 text-left text-sm text-rose-200 transition hover:text-rose-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-inset focus-visible:outline-rose-200"
+                >
+                  Sign out
+                </button>
+              </>
             )}
           </nav>
         </div>
       )}
-      {/* Mobile Search */}
-      {isSearchOpen && (
-        <div className="border-t bg-white p-4 shadow-md lg:hidden">
-          <div className="flex items-center gap-2">
-            <form
-              className="flex flex-1 items-center gap-2"
-              onSubmit={(event) => {
-                event.preventDefault();
-                handleSearch(mobileSearchRef);
-                if (mobileSearchRef.current?.value.trim()) setIsSearchOpen(false);
-              }}
-            >
-              <input
-                ref={mobileSearchRef}
-                aria-label="Search products"
-                type="search"
-                autoFocus
-                placeholder="Search products..."
-                className="min-w-0 flex-1 rounded-full border px-4 py-2 outline-none focus:ring-2 focus:ring-black"
-              />
-              <button
-                type="submit"
-                className="rounded-full border border-gray-800 px-4 py-2 text-sm font-medium text-gray-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-black"
-              >
-                Search
-              </button>
 
-              <button
-                type="button"
-                aria-label="Close search"
-                onClick={() => setIsSearchOpen(false)}
-                className="rounded-sm text-gray-500 hover:text-black focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-black"
-              >
-                <XCircle size={22} aria-hidden="true" />
-              </button>
-            </form>
-          </div>
+      {isSearchOpen && (
+        <div className="border-t border-white/10 bg-[#151513] px-5 py-4 lg:hidden">
+          <form
+            role="search"
+            className="mx-auto flex max-w-2xl items-center gap-3"
+            onSubmit={(event) => {
+              event.preventDefault();
+              handleSearch(mobileSearchRef);
+            }}
+          >
+            <input
+              ref={mobileSearchRef}
+              aria-label="Search products"
+              type="search"
+              autoFocus
+              placeholder="Search the collection"
+              className="min-h-11 min-w-0 flex-1 border border-white/15 bg-white/[0.045] px-4 py-2 text-sm text-[#f4f1e9] placeholder:text-white/35 focus:border-[#c6b2ff]/80 focus:outline-none focus:ring-2 focus:ring-[#c6b2ff]/20"
+            />
+            <button
+              type="submit"
+              className="min-h-11 border border-[#c6b2ff] bg-[#c6b2ff] px-4 text-xs font-semibold text-[#17151b] transition hover:bg-[#d5c8ff] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#c6b2ff]"
+            >
+              Search
+            </button>
+          </form>
         </div>
       )}
     </header>

@@ -17,6 +17,7 @@ import productRouter from "./route/product.router.js";
 import cartRouter from "./route/cart.router.js";
 import paymentRouter from "./route/payment.router.js";
 import orderRouter from "./route/order.router.js";
+import sellerApplicationRouter from "./route/seller-application.router.js";
 import { handleStripeWebhook } from "./controllers/payment.controller.js";
 
 const allowedOrigins = new Set([new URL(config.CLIENT_URL).origin]);
@@ -108,6 +109,7 @@ export const createApp = () => {
   app.use("/api/cart", cartRouter);
   app.use("/api/payment", paymentRouter);
   app.use("/api/orders", orderRouter);
+  app.use("/api/seller-applications", sellerApplicationRouter);
   app.use("/api", notFoundHandler);
 
   if (config.NODE_ENV === "production") {

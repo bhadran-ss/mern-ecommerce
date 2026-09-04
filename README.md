@@ -102,6 +102,17 @@ or product claims.
 
 Seeding is disabled when `NODE_ENV=production`.
 
+## Seller onboarding
+
+Public signup always creates a customer account; selecting a seller role is
+not available and the API refuses attempts to assign seller or administrator
+roles during signup. A signed-in customer can use **Sell with us** or visit
+`/sell` to submit store details. New applications remain pending until an
+administrator reviews them in **Seller applications** on the admin panel.
+Approval grants seller access; declined applicants can update their details
+and apply again. Existing seller accounts are not changed by this onboarding
+flow.
+
 ## Stripe test checkout and local webhook
 
 Checkout uses Stripe test mode only. **Demo payment — no real money will be
@@ -124,5 +135,4 @@ webhook.
 ## Quality checks and limitations
 
 Run `npm run lint` and `npm run build` from the repository root. There is no
-configured test script or existing automated test suite in this repository.
-There is also no GitHub Actions workflow configured.
+GitHub Actions workflow configured.

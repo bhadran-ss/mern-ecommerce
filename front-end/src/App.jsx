@@ -24,6 +24,7 @@ import DetailedCard from "./pages/DetailedCard";
 import AllProducts from "./pages/AllProducts";
 import AboutPage from "./pages/AboutPage";
 import ContactPage from "./pages/ContactPage";
+import SellerApplicationPage from "./pages/SellerApplicationPage";
 
 const getLoginDestination = (returnTo) => {
   if (!returnTo) return "/";
@@ -39,6 +40,9 @@ const getLoginDestination = (returnTo) => {
     }
     if (target.pathname === "/orders" && !target.search && !target.hash) {
       return "/orders";
+    }
+    if (target.pathname === "/sell" && !target.search && !target.hash) {
+      return "/sell";
     }
     if (
       /^\/orders\/[a-f\d]{24}$/i.test(target.pathname) &&
@@ -76,6 +80,7 @@ function App() {
     pathname === "/purchase-success" ||
     pathname === "/purchase-cancel" ||
     pathname === "/seller-panel" ||
+    pathname === "/sell" ||
     pathname === "/secret-panel";
   const { user, checkingAuth } = useSelector((state) => state.auth);
   const featuredProducts = useSelector(
@@ -155,6 +160,20 @@ function App() {
           path="/seller-panel"
           element={
             user?.role === "seller" ? <SellerPage /> : <Navigate to="/" />
+          }
+        />
+        <Route
+          path="/sell"
+          element={
+            !user ? (
+              <Navigate to="/login?returnTo=%2Fsell" replace />
+            ) : user.role === "seller" ? (
+              <Navigate to="/seller-panel" replace />
+            ) : user.role === "admin" ? (
+              <Navigate to="/secret-panel" replace />
+            ) : (
+              <SellerApplicationPage />
+            )
           }
         />
         <Route path="/category/:category" element={<CategoryPage />} />

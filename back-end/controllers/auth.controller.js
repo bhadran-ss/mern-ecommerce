@@ -54,13 +54,17 @@ const signup = async (req, res, next) => {
     );
   }
 
-  if (role === "admin") {
+  if (role === "seller" || role === "admin") {
     return next(
-      new ApiError(403, "FORBIDDEN", "Administrator accounts cannot be registered publicly."),
+      new ApiError(
+        403,
+        "FORBIDDEN",
+        "Seller and administrator roles cannot be assigned during signup.",
+      ),
     );
   }
-  if (role !== undefined && role !== "customer" && role !== "seller") {
-    return next(new ApiError(400, "VALIDATION_ERROR", "Role must be customer or seller."));
+  if (role !== undefined && role !== "customer") {
+    return next(new ApiError(400, "VALIDATION_ERROR", "Role must be customer."));
   }
 
   try {
@@ -73,7 +77,7 @@ const signup = async (req, res, next) => {
       name: normalizedName,
       email: normalizedEmail,
       password,
-      role: role === "seller" ? "seller" : "customer",
+      role: "customer",
     });
     await user.save();
 

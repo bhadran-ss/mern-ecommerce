@@ -5,10 +5,12 @@ import AccountLayout from "../components/AccountLayout";
 import ManageProducts from "../components/ManageProducts";
 import AddProduct from "../components/AddProduct";
 import { fetchAllProducts } from "../store/slices/productSlice";
+import SellerApplications from "../components/SellerApplications";
 
 const adminTabs = [
   { id: "manageProducts", label: "Catalog" },
   { id: "addProduct", label: "Add product" },
+  { id: "sellerApplications", label: "Seller applications" },
 ];
 
 const AdminPage = () => {
@@ -104,7 +106,11 @@ const AdminPage = () => {
               id="admin-tab-panel"
               role="region"
               aria-label={
-                activeTab === "manageProducts" ? "Catalog products" : "Add product"
+                activeTab === "manageProducts"
+                  ? "Catalog products"
+                  : activeTab === "addProduct"
+                    ? "Add product"
+                    : "Seller applications"
               }
               aria-labelledby={`admin-tab-${activeTab}`}
               className="p-4 sm:p-6 lg:p-8"
@@ -136,8 +142,10 @@ const AdminPage = () => {
                 ) : (
                   <ManageProducts canFeature variant="admin" />
                 )
-              ) : (
+              ) : activeTab === "addProduct" ? (
                 <AddProduct variant="admin" />
+              ) : (
+                <SellerApplications />
               )}
             </div>
           </section>

@@ -5,14 +5,20 @@ import { logoutUser } from "../store/slices/authSlice";
 
 const accountDestinations = {
   customer: { label: "Order history", path: "/orders" },
+  sellerApplication: { label: "Seller application", path: "/sell" },
   seller: { label: "Seller studio", path: "/seller-panel" },
   admin: { label: "Catalog admin", path: "/secret-panel" },
 };
 
-const AccountLayout = ({ role, children, footerLabel }) => {
+const AccountLayout = ({
+  role,
+  destinationKey = role,
+  children,
+  footerLabel,
+}) => {
   const dispatch = useDispatch();
   const user = useSelector((state) => state.auth.user);
-  const destination = accountDestinations[role];
+  const destination = accountDestinations[destinationKey];
 
   return (
     <main className="relative isolate flex-1 overflow-hidden bg-[#11110f] text-[#f4f1e9] selection:bg-[#c6b2ff] selection:text-[#17151b]">

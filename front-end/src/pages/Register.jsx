@@ -9,7 +9,6 @@ const initialFormData = {
   email: "",
   password: "",
   confirmPassword: "",
-  role: "customer",
 };
 
 const Register = () => {
@@ -32,17 +31,28 @@ const Register = () => {
     <AuthLayout
       eyebrow="Make it yours"
       title="Find your way in."
-      description="Create an account to get started with Vistyle."
+      description="Create a customer account to get started with Vistyle. You can apply to open a seller store separately."
       footer={
-        <>
-          Already have an account?{" "}
-          <Link
-            to="/login"
-            className="font-medium text-[#e3d8ff] underline decoration-[#c6b2ff]/50 underline-offset-4 transition hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#c6b2ff]"
-          >
-            Sign in
-          </Link>
-        </>
+        <div className="space-y-3">
+          <p className="mb-0">
+            Already have an account?{" "}
+            <Link
+              to="/login"
+              className="font-medium text-[#e3d8ff] underline decoration-[#c6b2ff]/50 underline-offset-4 transition hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#c6b2ff]"
+            >
+              Sign in
+            </Link>
+          </p>
+          <p className="mb-0">
+            Interested in selling?{" "}
+            <Link
+              to="/sell"
+              className="font-medium text-[#e3d8ff] underline decoration-[#c6b2ff]/50 underline-offset-4 transition hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#c6b2ff]"
+            >
+              Learn about seller applications
+            </Link>
+          </p>
+        </div>
       }
     >
       <form className="space-y-4" onSubmit={handleSubmit} aria-busy={isLoading}>
@@ -132,24 +142,6 @@ const Register = () => {
             onChange={handleChange}
             required
           />
-        </div>
-        <div>
-          <label
-            htmlFor="register-role"
-            className="mb-2 block text-[11px] font-semibold uppercase tracking-[0.16em] text-white/65"
-          >
-            Account type
-          </label>
-          <select
-            id="register-role"
-            name="role"
-            className="w-full appearance-none border border-white/15 bg-[#1a191b] px-4 py-3 text-sm text-[#f4f1e9] transition focus:border-[#c6b2ff]/80 focus:outline-none focus:ring-2 focus:ring-[#c6b2ff]/20"
-            value={formData.role}
-            onChange={handleChange}
-          >
-            <option value="customer">Customer</option>
-            <option value="seller">Seller</option>
-          </select>
         </div>
         {error && (
           <p

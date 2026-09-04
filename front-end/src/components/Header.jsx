@@ -109,6 +109,15 @@ const Header = () => {
                   <span className="absolute -bottom-2 left-0 h-px w-full origin-left scale-x-0 bg-[#c6b2ff] transition-transform duration-300 group-hover:scale-x-100" />
                 </Link>
               ))}
+              {user?.role !== "seller" && user?.role !== "admin" && (
+                <Link
+                  to="/sell"
+                  className="group relative rounded-sm text-xs font-medium tracking-wide text-[#d9ccff] no-underline transition hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#c6b2ff]"
+                >
+                  Sell with us
+                  <span className="absolute -bottom-2 left-0 h-px w-full origin-left scale-x-0 bg-[#c6b2ff] transition-transform duration-300 group-hover:scale-x-100" />
+                </Link>
+              )}
             </nav>
           )}
         </div>
@@ -230,6 +239,15 @@ const Header = () => {
                 {item.label}
               </Link>
             ))}
+            {user?.role !== "seller" && user?.role !== "admin" && (
+              <Link
+                to="/sell"
+                onClick={closeMobileMenu}
+                className="border-b border-white/[0.07] py-4 text-sm text-[#d9ccff] no-underline transition hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-inset focus-visible:outline-[#c6b2ff]"
+              >
+                Sell with us
+              </Link>
+            )}
             {!user ? (
               <>
                 <Link

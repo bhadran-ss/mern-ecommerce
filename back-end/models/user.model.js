@@ -1,6 +1,66 @@
 import mongoose from "mongoose";
 import bcrypt from "bcryptjs";
 
+const sellerApplicationSchema = new mongoose.Schema(
+  {
+    storeName: {
+      type: String,
+      required: true,
+      trim: true,
+      minlength: 2,
+      maxlength: 100,
+    },
+    contactPhone: {
+      type: String,
+      required: true,
+      trim: true,
+      maxlength: 24,
+    },
+    businessType: {
+      type: String,
+      enum: ["individual", "registered"],
+      required: true,
+    },
+    category: {
+      type: String,
+      enum: ["Clothing", "Bags & accessories", "Shoes", "Other"],
+      required: true,
+    },
+    website: {
+      type: String,
+      trim: true,
+      maxlength: 200,
+      default: "",
+    },
+    description: {
+      type: String,
+      required: true,
+      trim: true,
+      minlength: 30,
+      maxlength: 1000,
+    },
+    status: {
+      type: String,
+      enum: ["pending", "approved", "rejected"],
+      required: true,
+    },
+    submittedAt: {
+      type: Date,
+      required: true,
+    },
+    reviewedAt: {
+      type: Date,
+      default: null,
+    },
+    reviewNote: {
+      type: String,
+      maxlength: 500,
+      default: "",
+    },
+  },
+  { _id: false },
+);
+
 const userSchema = new mongoose.Schema(
   {
     name: {
@@ -36,6 +96,10 @@ const userSchema = new mongoose.Schema(
       type: String,
       enum: ["customer", "seller", "admin"],
       default: "customer",
+    },
+    sellerApplication: {
+      type: sellerApplicationSchema,
+      default: undefined,
     },
   },
   { timestamps: true },

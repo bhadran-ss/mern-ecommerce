@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { RotateCw } from "lucide-react";
 import AccountLayout from "../components/AccountLayout";
@@ -7,10 +7,15 @@ import AddProduct from "../components/AddProduct";
 import { fetchAllProducts } from "../store/slices/productSlice";
 import SellerApplications from "../components/SellerApplications";
 
+const CategoryManagement = lazy(
+  () => import("../components/CategoryManagement"),
+);
+
 const adminTabs = [
   { id: "manageProducts", label: "Catalog" },
   { id: "addProduct", label: "Add product" },
   { id: "sellerApplications", label: "Seller applications" },
+  { id: "categories", label: "Categories" },
 ];
 
 const AdminPage = () => {
@@ -110,7 +115,9 @@ const AdminPage = () => {
                   ? "Catalog products"
                   : activeTab === "addProduct"
                     ? "Add product"
-                    : "Seller applications"
+                    : activeTab === "sellerApplications"
+                      ? "Seller applications"
+                      : "Category management"
               }
               aria-labelledby={`admin-tab-${activeTab}`}
               className="p-4 sm:p-6 lg:p-8"
@@ -144,8 +151,18 @@ const AdminPage = () => {
                 )
               ) : activeTab === "addProduct" ? (
                 <AddProduct variant="admin" />
-              ) : (
+              ) : activeTab === "sellerApplications" ? (
                 <SellerApplications />
+              ) : (
+                <Suspense
+                  fallback={
+                    <p role="status" className="text-sm text-white/60">
+                      Loading category tools...
+                    </p>
+                  }
+                >
+                  <CategoryManagement />
+                </Suspense>
               )}
             </div>
           </section>

@@ -1,33 +1,48 @@
-import React, { useState } from "react";
-import { Upload } from "lucide-react";
+import React, { useEffect, useState } from "react";
+import { RotateCw, Upload } from "lucide-react";
 import { useDispatch, useSelector } from "react-redux";
 import { createProduct as createProductThunk } from "../store/slices/productSlice";
+import { fetchCategories } from "../store/slices/categorySlice";
 
 const AddProduct = ({ variant = "default", onCreated }) => {
   const isSellerVariant = variant === "seller";
   const isThemedVariant = isSellerVariant || variant === "admin";
-  const categorys = ["jeans", "shirts", "suits", "bags", "jackets", "shoes"];
+  const dispatch = useDispatch();
+  const {
+    categories,
+    categoriesStatus,
+    categoriesError,
+  } = useSelector((state) => state.categories);
   const [newproduct, setNewProduct] = useState({
     name: "",
     description: "",
-    category: "jeans",
+    category: "",
     price: 0,
     stock: 0,
     image: null,
   });
-  const dispatch = useDispatch();
   const loading = useSelector((state) => state.products.loading);
+
+  useEffect(() => {
+    if (categoriesStatus === "idle") dispatch(fetchCategories());
+  }, [categoriesStatus, dispatch]);
+
+  useEffect(() => {
+    if (!newproduct.category && categories.length > 0) {
+      setNewProduct((current) => ({ ...current, category: categories[0].name }));
+    }
+  }, [categories, newproduct.category]);
 
   const handleImageChange = (e) => {
     const file = e.target.files[0];
     if (file) {
       const reader = new FileReader();
       reader.onloadend = () => {
-        setNewProduct({ ...newproduct, image: reader.result });
+        setNewProduct((current) => ({ ...current, image: reader.result }));
       };
       reader.readAsDataURL(file);
     } else {
-      setNewProduct({ ...newproduct, image: null });
+      setNewProduct((current) => ({ ...current, image: null }));
     }
   };
 
@@ -40,7 +55,7 @@ const AddProduct = ({ variant = "default", onCreated }) => {
         setNewProduct({
           name: "",
           description: "",
-          category: "jeans",
+          category: categories[0]?.name || "",
           price: 0,
           stock: 0,
           image: null,
@@ -158,12 +173,33 @@ const AddProduct = ({ variant = "default", onCreated }) => {
               setNewProduct({ ...newproduct, category: e.target.value })
             }
           >
-            {categorys.map((category) => (
-              <option key={category} value={category}>
-                {category.charAt(0).toUpperCase() + category.slice(1)}
+            {categories.map((category) => (
+              <option key={category.slug} value={category.name}>
+                {category.name}
               </option>
             ))}
           </select>
+          {categoriesStatus === "failed" ? (
+            <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-xs text-rose-200">
+              <span>{categoriesError}</span>
+              <button
+                type="button"
+                onClick={() => dispatch(fetchCategories())}
+                className="inline-flex min-h-8 items-center gap-1 underline underline-offset-2"
+              >
+                <RotateCw size={13} aria-hidden="true" />
+                Retry
+              </button>
+            </div>
+          ) : categories.length === 0 && categoriesStatus !== "loading" ? (
+            <p className="mb-0 mt-2 text-xs text-white/55">
+              No active categories yet. Ask an administrator to add one.
+            </p>
+          ) : categoriesStatus === "loading" ? (
+            <p role="status" className="mb-0 mt-2 text-xs text-white/55">
+              Loading categories...
+            </p>
+          ) : null}
         </div>
 
         <div>
@@ -270,7 +306,7 @@ const AddProduct = ({ variant = "default", onCreated }) => {
 
         <button
           type="submit"
-          disabled={loading}
+          disabled={loading || categoriesStatus !== "succeeded" || categories.length === 0}
           className={`w-full px-4 py-3 text-sm font-semibold transition disabled:cursor-wait disabled:opacity-60 ${
             isThemedVariant
               ? "border border-[#c6b2ff] bg-[#c6b2ff] text-[#17151b] hover:bg-[#d5c8ff] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#c6b2ff]"

@@ -1,4 +1,5 @@
 import Product from "../models/product.model.js";
+import { findActiveCategoryName, slugifyCategory } from "../utils/category.js";
 import { ApiError } from "../middleware/errors.js";
 import {
   cleanupProductImages,
@@ -11,7 +12,6 @@ import {
 } from "../validation/product-image.validation.js";
 import {
   validateProductBody,
-  validateProductCategory,
   validateProductId,
   validateProductSearchName,
 } from "../validation/product.validation.js";
@@ -95,6 +95,16 @@ const createProduct = async (req, res, next) => {
       category,
       stock,
     } = req.body;
+    const categoryName = await findActiveCategoryName(slugifyCategory(category));
+    if (!categoryName) {
+      return next(
+        new ApiError(
+          400,
+          "INVALID_CATEGORY",
+          "Choose an active store category.",
+        ),
+      );
+    }
     const { dataUrls } = getProductImageInputs(req.body);
     validateProductImageDataUrls(dataUrls);
     const logger = req.app.locals.logger;
@@ -109,7 +119,7 @@ const createProduct = async (req, res, next) => {
         image: uploadedImages[0]?.secure_url || "",
         images: uploadedImages.map((image) => image.secure_url),
         stock: stock ?? 0,
-        category,
+        category: categoryName,
         sellerId: req.user._id,
       });
     } catch (error) {
@@ -153,6 +163,20 @@ const updateProduct = async (req, res, next) => {
       return next(new ApiError(403, "FORBIDDEN", "You can only edit your own products."));
     }
 
+    const categoryName =
+      category === undefined
+        ? product.category
+        : await findActiveCategoryName(slugifyCategory(category));
+    if (!categoryName) {
+      return next(
+        new ApiError(
+          400,
+          "INVALID_CATEGORY",
+          "Choose an active store category.",
+        ),
+      );
+    }
+
     const { dataUrls, field } = getProductImageInputs(req.body);
     validateProductImageDataUrls(dataUrls);
     const logger = req.app.locals.logger;
@@ -172,7 +196,7 @@ const updateProduct = async (req, res, next) => {
     product.name = name ?? product.name;
     product.description = description ?? product.description;
     product.price = price ?? product.price;
-    product.category = category ?? product.category;
+    product.category = categoryName;
     if (typeof isFeatured === "boolean") {
       product.isFeatured = isFeatured;
     }
@@ -231,16 +255,6 @@ const deleteProduct = async (req, res, next) => {
     return next(error);
   }
 };
-const getProductsByCategory = async (req, res, next) => {
-  const { category } = req.params;
-  try {
-    const normalizedCategory = validateProductCategory(category);
-    const products = await Product.find({ category: normalizedCategory });
-    res.status(200).json(products);
-  } catch (error) {
-    return next(error);
-  }
-};
 const toggleFeaturedProduct = async (req, res, next) => {
   const { id } = req.params;
   try {
@@ -272,7 +286,6 @@ export {
   createProduct,
   updateProduct,
   deleteProduct,
-  getProductsByCategory,
   getProductById,
   toggleFeaturedProduct,
   searchProducts,

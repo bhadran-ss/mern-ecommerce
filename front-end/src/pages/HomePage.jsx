@@ -1,27 +1,54 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { ArrowDown, ArrowRight, CreditCard, Sparkles } from "lucide-react";
 import { Link } from "react-router-dom";
+import { useDispatch, useSelector } from "react-redux";
 import bg from "/bg.jpg";
-import jeans from "/jeans.webp";
-import shirts from "/shirts.jpg";
-import suits from "/suits.jpg";
-import bags from "/bags.jpg";
-import jackets from "/jackets.jpg";
-import shoes from "/shoes.jpeg";
+import jeans from "/category-images/jeans.jpg";
+import shirts from "/category-images/shirts.jpg";
+import suits from "/category-images/suits.jpg";
+import bags from "/category-images/bags.jpg";
+import jackets from "/category-images/jackets.jpg";
+import shoes from "/category-images/shoes.jpg";
+import accessories from "/category-images/accessories.jpg";
+import electronics from "/category-images/electronics.jpg";
+import pants from "/category-images/pants.jpg";
+import hoodies from "/category-images/hoodies.jpg";
+import tops from "/category-images/tops.jpg";
 import TopPicks from "../components/TopPicks";
 import CategoriesSection from "../components/CategoriesSection";
+import { fetchCategories } from "../store/slices/categorySlice";
 
-const categories = [
-  { name: "Jeans", image: jeans },
-  { name: "Shirts", image: shirts },
-  { name: "Suits", image: suits },
-  { name: "Bags", image: bags },
-  { name: "Jackets", image: jackets },
-  { name: "Shoes", image: shoes },
-];
+const categoryImageBySlug = {
+  jeans,
+  shirts,
+  suits,
+  bags,
+  jackets,
+  shoes,
+  accessories,
+  electronics,
+  pants,
+  hoodies,
+  tops,
+};
 
-const HomePage = () => (
-  <main className="relative isolate flex-1 overflow-hidden bg-[#11110f] text-[#f4f1e9]">
+const HomePage = () => {
+  const dispatch = useDispatch();
+  const { categories, categoriesStatus, categoriesError } = useSelector(
+    (state) => state.categories,
+  );
+
+  useEffect(() => {
+    if (categoriesStatus === "idle") dispatch(fetchCategories());
+  }, [categoriesStatus, dispatch]);
+
+  const categoriesWithArtwork = categories.map((category) => ({
+    ...category,
+    image: category.image || categoryImageBySlug[category.slug] || "",
+  }));
+
+  return (
+    <main className="relative isolate flex-1 overflow-hidden bg-[#11110f] text-[#f4f1e9]">
     <section
       aria-labelledby="home-title"
       className="relative isolate flex min-h-[620px] items-end overflow-hidden border-b border-white/10 sm:min-h-[700px] lg:min-h-[calc(100svh-76px)]"
@@ -135,8 +162,14 @@ const HomePage = () => (
     </section>
 
     <TopPicks />
-    <CategoriesSection categories={categories} />
+    <CategoriesSection
+      categories={categoriesWithArtwork}
+      status={categoriesStatus}
+      error={categoriesError}
+      onRetry={() => dispatch(fetchCategories())}
+    />
   </main>
-);
+  );
+};
 
 export default HomePage;

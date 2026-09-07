@@ -150,12 +150,12 @@ export const fetchProductByCategory = createAsyncThunk(
   async (category, { rejectWithValue }) => {
     try {
       const { data } = await axios.get(
-        `/products/category/${encodeURIComponent(category)}`,
+        `/categories/products/${encodeURIComponent(category)}`,
       );
-      if (!Array.isArray(data)) {
+      if (!Array.isArray(data.data)) {
         return rejectWithValue("The category response was invalid.");
       }
-      return data;
+      return data.data;
     } catch (error) {
       return rejectWithValue(
         error.response?.data?.error?.message ||

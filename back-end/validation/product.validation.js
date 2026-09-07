@@ -29,17 +29,6 @@ export const validateProductSearchName = (name) => {
   return name.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 };
 
-export const validateProductCategory = (category) => {
-  if (typeof category !== "string" || !category.trim() || category.length > 100) {
-    throw new ApiError(
-      400,
-      "VALIDATION_ERROR",
-      "Category must be between 1 and 100 characters.",
-    );
-  }
-  return category.trim();
-};
-
 export const validateProductBody = (
   body,
   { creating = false, role } = {},

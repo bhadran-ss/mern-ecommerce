@@ -1,7 +1,9 @@
 import { connectDB, disconnectDB } from "./lib/db.js";
+import Category from "./models/category.model.js";
 import Product from "./models/product.model.js";
 import User from "./models/user.model.js";
 import config from "./config/env.js";
+import { slugifyCategory } from "./utils/category.js";
 
 const legacySampleImageIdByName = new Map([
   ["Vintage Blue Jeans", "photo-1520962911512-1b8beb440f4e"],
@@ -192,6 +194,74 @@ const sampleProducts = [
   },
 ];
 
+const categoryArtworkByName = new Map([
+  ["Jeans", "/category-images/jeans.jpg"],
+  ["Shirts", "/category-images/shirts.jpg"],
+  ["Bags", "/category-images/bags.jpg"],
+  ["Shoes", "/category-images/shoes.jpg"],
+  ["Jackets", "/category-images/jackets.jpg"],
+  ["Accessories", "/category-images/accessories.jpg"],
+  ["Electronics", "/category-images/electronics.jpg"],
+  ["Pants", "/category-images/pants.jpg"],
+  ["Hoodies", "/category-images/hoodies.jpg"],
+  ["Tops", "/category-images/tops.jpg"],
+]);
+
+const legacyCategoryArtworkByName = new Map([
+  ["Jeans", ["/jeans.webp"]],
+  ["Shirts", ["/shirts.jpg"]],
+  ["Bags", ["/bags.jpg"]],
+  ["Shoes", ["/shoes.jpeg"]],
+  ["Jackets", ["/jackets.jpg"]],
+  [
+    "Accessories",
+    [
+      sampleProducts.find(({ name }) => name === "Round Sunglasses").image,
+    ],
+  ],
+  [
+    "Electronics",
+    [
+      sampleProducts.find(({ name }) => name === "Wireless Headphones").image,
+    ],
+  ],
+  [
+    "Pants",
+    [
+      sampleProducts.find(({ name }) => name === "Khaki Chino Trousers").image,
+    ],
+  ],
+  [
+    "Hoodies",
+    [
+      sampleProducts.find(({ name }) => name === "Gray Pullover Hoodie").image,
+    ],
+  ],
+  [
+    "Tops",
+    [
+      sampleProducts.find(({ name }) => name === "Classic Crew T-Shirt").image,
+    ],
+  ],
+]);
+
+const sampleCategories = [
+  ...new Set(sampleProducts.map(({ category }) => category)),
+].map((name) => {
+  const image = categoryArtworkByName.get(name);
+  if (!image) {
+    throw new Error(`Missing seed artwork for category "${name}".`);
+  }
+
+  return {
+    name,
+    slug: slugifyCategory(name),
+    description: `Explore our ${name.toLowerCase()} collection.`,
+    image,
+    isActive: true,
+  };
+});
+
 const getImageId = (url) => {
   try {
     return new URL(url).pathname.split("/").pop();
@@ -216,7 +286,7 @@ const legacyProductNames = {
 
 const seedProducts = async () => {
   if (config.NODE_ENV === "production") {
-    console.error("Product seeding is disabled when NODE_ENV=production.");
+    console.error("Sample data seeding is disabled when NODE_ENV=production.");
     process.exitCode = 1;
     return;
   }
@@ -232,6 +302,34 @@ const seedProducts = async () => {
       process.exitCode = 1;
       return;
     }
+
+    const categoryResult = await Category.bulkWrite(
+      sampleCategories.map((category) => ({
+        updateOne: {
+          filter: { slug: category.slug },
+          update: { $setOnInsert: category },
+          upsert: true,
+        },
+      })),
+      { ordered: true },
+    );
+    await Category.bulkWrite(
+      sampleCategories.map((category) => ({
+        updateOne: {
+          filter: {
+            slug: category.slug,
+            image: {
+              $in: [
+                "",
+                ...(legacyCategoryArtworkByName.get(category.name) ?? []),
+              ],
+            },
+          },
+          update: { $set: { image: category.image } },
+        },
+      })),
+      { ordered: true },
+    );
 
     const productNames = sampleProducts
       .flatMap(({ name }) => [name, legacyProductNames[name]])
@@ -295,7 +393,7 @@ const seedProducts = async () => {
       : { upsertedCount: 0, modifiedCount: 0 };
 
     console.log(
-      `Product seed complete: ${result.upsertedCount} added, ${result.modifiedCount} legacy images refreshed, ${preservedCount} seller-edited products preserved.`,
+      `Seed complete: ${categoryResult.upsertedCount} categories added; ${result.upsertedCount} products added, ${result.modifiedCount} legacy images refreshed, ${preservedCount} seller-edited products preserved.`,
     );
   } catch (error) {
     console.error(

@@ -7,7 +7,9 @@
     "dev": "nodemon back-end/server.js",
     "start": "node back-end/server.js",
     "seed": "node back-end/seedProducts.js",
-    "build": "npm install && npm install --prefix front-end && npm run build --prefix front-end"
+    "lint": "npm run lint --prefix front-end && npm run check:server",
+    "check:server": "node --check back-end/server.js",
+    "build": "npm run build --prefix front-end"
   },
   "keywords": [],
   "author": "",
@@ -20,11 +22,14 @@
     "cors": "^2.8.5",
     "dotenv": "^17.2.0",
     "express": "^5.1.0",
+    "express-rate-limit": "^8.7.0",
+    "helmet": "^8.3.0",
     "ioredis": "^5.6.1",
     "jose": "^6.2.3",
-    "jsonwebtoken": "^9.0.2",
     "mongoose": "^8.16.3",
-    "nodemon": "^3.1.14",
     "stripe": "^18.3.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.14"
   }
 }

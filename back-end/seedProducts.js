@@ -1,341 +1,188 @@
-import dotenv from "dotenv";
-import path from "path";
-import { fileURLToPath } from "url";
-
-import "./lib/db.js";
+import { connectDB, disconnectDB } from "./lib/db.js";
+import Category from "./models/category.model.js";
 import Product from "./models/product.model.js";
 import User from "./models/user.model.js";
+import config from "./config/env.js";
+import { slugifyCategory } from "./utils/category.js";
 
-dotenv.config({ silent: true });
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+const legacySampleImageIdByName = new Map([
+  ["Vintage Blue Jeans", "photo-1520962911512-1b8beb440f4e"],
+  ["Soft Cotton Shirt", "photo-1521572163474-6864f9cf17ab"],
+  ["Leather Messenger Bag", "photo-1490367532201-b9bc1dc483f6"],
+  ["Running Sneakers", "photo-1519741497252-27287287ca0c"],
+  ["Aviator Sunglasses", "photo-1522335789203-aabd1fc54bc9"],
+  ["Denim Jacket", "photo-1512436991641-6745cdb1723f"],
+  ["Leather Boots", "photo-1519741497252-27287287ca0c"],
+  ["Wireless Headphones", "photo-1511367461989-f85a21fda167"],
+  ["Slim Fit Chinos", "photo-1512436991641-6745cdb1723f"],
+  ["Elegant Dress Watch", "photo-1519741497252-27287287ca0c"],
+  ["Travel Backpack", "photo-1506617420156-8e4536971650"],
+  ["Performance Hoodie", "photo-1523381213563-6a3bb3fdd814"],
+  ["Minimalist Wallet", "photo-1524499982521-1ffd58dd89ea"],
+  ["Premium Graphic Tee", "photo-1521572163474-6864f9cf17ab"],
+]);
 
 const sampleProducts = [
   {
     name: "Vintage Blue Jeans",
-    description:
-      "Classic slim-fit denim with subtle distressing for everyday style.",
+    description: "Classic blue denim jeans in a versatile everyday cut.",
     price: 2199,
     category: "Jeans",
     stock: 25,
     image:
-      "https://images.unsplash.com/photo-1520962911512-1b8beb440f4e?auto=format&fit=crop&w=800&q=80",
+      "https://images.unsplash.com/photo-1542272604-787c3835535d?auto=format&fit=crop&w=800&q=80",
     images: [
-      "https://images.unsplash.com/photo-1520962911512-1b8beb440f4e?auto=format&fit=crop&w=800&q=80",
-      "https://images.unsplash.com/photo-1520974736068-4cd68691f0e5?auto=format&fit=crop&w=800&q=80",
+      "https://images.unsplash.com/photo-1542272604-787c3835535d?auto=format&fit=crop&w=800&q=80",
     ],
   },
   {
-    name: "Soft Cotton Shirt",
-    description:
-      "Breathable cotton shirt with a modern tailored fit and crisp finish.",
+    name: "Blue Patterned Shirt",
+    description: "A blue button-up shirt with a subtle all-over pattern.",
     price: 1499,
     category: "Shirts",
     stock: 40,
     image:
-      "https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?auto=format&fit=crop&w=800&q=80",
+      "https://images.unsplash.com/photo-1596755094514-f87e34085b2c?auto=format&fit=crop&w=800&q=80",
     images: [
-      "https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?auto=format&fit=crop&w=800&q=80",
-      "https://images.unsplash.com/photo-1541099649105-f69ad21f3246?auto=format&fit=crop&w=800&q=80",
+      "https://images.unsplash.com/photo-1596755094514-f87e34085b2c?auto=format&fit=crop&w=800&q=80",
     ],
   },
   {
-    name: "Leather Messenger Bag",
-    description:
-      "Smooth leather bag with adjustable strap and roomy interior compartments.",
+    name: "Structured Shoulder Bag",
+    description: "A structured shoulder bag with a top handle and long strap.",
     price: 3599,
     category: "Bags",
     stock: 15,
     image:
-      "https://images.unsplash.com/photo-1490367532201-b9bc1dc483f6?auto=format&fit=crop&w=800&q=80",
+      "https://images.unsplash.com/photo-1590874103328-eac38a683ce7?auto=format&fit=crop&w=800&q=80",
     images: [
-      "https://images.unsplash.com/photo-1490367532201-b9bc1dc483f6?auto=format&fit=crop&w=800&q=80",
-      "https://images.unsplash.com/photo-1490367532201-08f627ca0a85?auto=format&fit=crop&w=800&q=80",
+      "https://images.unsplash.com/photo-1590874103328-eac38a683ce7?auto=format&fit=crop&w=800&q=80",
     ],
   },
   {
-    name: "Running Sneakers",
-    description:
-      "Lightweight performance sneakers designed for comfort and style.",
+    name: "Red Running Sneakers",
+    description: "Red low-top running sneakers with a streamlined profile.",
     price: 2799,
     category: "Shoes",
     stock: 32,
     image:
-      "https://images.unsplash.com/photo-1519741497252-27287287ca0c?auto=format&fit=crop&w=800&q=80",
+      "https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&w=800&q=80",
     images: [
-      "https://images.unsplash.com/photo-1519741497252-27287287ca0c?auto=format&fit=crop&w=800&q=80",
-      "https://images.unsplash.com/photo-1528701800489-20c0d9b51b36?auto=format&fit=crop&w=800&q=80",
+      "https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&w=800&q=80",
     ],
   },
   {
-    name: "Classic Wool Coat",
-    description:
-      "Warm wool blend coat finished with a refined, structured silhouette.",
-    price: 4999,
-    category: "Jackets",
-    stock: 18,
-    image:
-      "https://images.unsplash.com/photo-1512436991641-6745cdb1723f?auto=format&fit=crop&w=800&q=80",
-    images: [
-      "https://images.unsplash.com/photo-1512436991641-6745cdb1723f?auto=format&fit=crop&w=800&q=80",
-      "https://images.unsplash.com/photo-1512436991641-55ef96274d0a?auto=format&fit=crop&w=800&q=80",
-    ],
-  },
-  {
-    name: "Smartwatch Pro",
-    description:
-      "Feature-packed smartwatch with activity tracking and long battery life.",
-    price: 6999,
-    category: "Electronics",
-    stock: 22,
-    image:
-      "https://images.unsplash.com/photo-1503435824048-a7997123d3d2?auto=format&fit=crop&w=800&q=80",
-    images: [
-      "https://images.unsplash.com/photo-1503435824048-a7997123d3d2?auto=format&fit=crop&w=800&q=80",
-      "https://images.unsplash.com/photo-1516574187841-cb9cc2ca948b?auto=format&fit=crop&w=800&q=80",
-    ],
-  },
-  {
-    name: "Aviator Sunglasses",
-    description:
-      "Timeless aviator sunglasses with UV protection and polished metal frames.",
+    name: "Round Sunglasses",
+    description: "Round metal-frame sunglasses with dark lenses.",
     price: 1299,
     category: "Accessories",
     stock: 45,
     image:
-      "https://images.unsplash.com/photo-1522335789203-aabd1fc54bc9?auto=format&fit=crop&w=800&q=80",
+      "https://images.unsplash.com/photo-1511499767150-a48a237f0083?auto=format&fit=crop&w=800&q=80",
     images: [
-      "https://images.unsplash.com/photo-1522335789203-aabd1fc54bc9?auto=format&fit=crop&w=800&q=80",
-      "https://images.unsplash.com/photo-1518546305929-5c9d96cd8f4b?auto=format&fit=crop&w=800&q=80",
+      "https://images.unsplash.com/photo-1511499767150-a48a237f0083?auto=format&fit=crop&w=800&q=80",
     ],
   },
   {
     name: "Denim Jacket",
-    description:
-      "Versatile denim jacket with a soft interior and classic button front.",
+    description: "A dark denim jacket with a contrast collar and button front.",
     price: 2699,
     category: "Jackets",
     stock: 26,
     image:
-      "https://images.unsplash.com/photo-1512436991641-6745cdb1723f?auto=format&fit=crop&w=800&q=80",
+      "https://images.unsplash.com/photo-1543076447-215ad9ba6923?auto=format&fit=crop&w=800&q=80",
     images: [
-      "https://images.unsplash.com/photo-1512436991641-6745cdb1723f?auto=format&fit=crop&w=800&q=80",
-      "https://images.unsplash.com/photo-1541099649105-f69ad21f3246?auto=format&fit=crop&w=800&q=80",
+      "https://images.unsplash.com/photo-1543076447-215ad9ba6923?auto=format&fit=crop&w=800&q=80",
     ],
   },
   {
-    name: "Leather Boots",
-    description:
-      "Durable leather boots built for everyday wear with comfort padding.",
+    name: "Brown Lace-Up Boots",
+    description: "Brown lace-up boots with a classic ankle-height profile.",
     price: 4299,
     category: "Shoes",
     stock: 20,
     image:
-      "https://images.unsplash.com/photo-1519741497252-27287287ca0c?auto=format&fit=crop&w=800&q=80",
+      "https://images.unsplash.com/photo-1608256246200-53e635b5b65f?auto=format&fit=crop&w=800&q=80",
     images: [
-      "https://images.unsplash.com/photo-1519741497252-27287287ca0c?auto=format&fit=crop&w=800&q=80",
-      "https://images.unsplash.com/photo-1528701800489-20c0d9b51b36?auto=format&fit=crop&w=800&q=80",
+      "https://images.unsplash.com/photo-1608256246200-53e635b5b65f?auto=format&fit=crop&w=800&q=80",
     ],
   },
   {
     name: "Wireless Headphones",
-    description:
-      "Noise-cancelling headphones with crisp audio and comfortable ear cups.",
+    description: "Black over-ear headphones with a padded headband.",
     price: 5699,
     category: "Electronics",
     stock: 30,
     image:
-      "https://images.unsplash.com/photo-1511367461989-f85a21fda167?auto=format&fit=crop&w=800&q=80",
+      "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&w=800&q=80",
     images: [
-      "https://images.unsplash.com/photo-1511367461989-f85a21fda167?auto=format&fit=crop&w=800&q=80",
-      "https://images.unsplash.com/photo-1519671482749-fd09be7ccebf?auto=format&fit=crop&w=800&q=80",
+      "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&w=800&q=80",
     ],
   },
   {
-    name: "Classic Leather Belt",
-    description:
-      "Smooth leather belt with a sleek matte buckle for everyday style.",
-    price: 799,
-    category: "Accessories",
-    stock: 58,
-    image:
-      "https://images.unsplash.com/photo-1524499982521-1ffd58dd89ea?auto=format&fit=crop&w=800&q=80",
-    images: [
-      "https://images.unsplash.com/photo-1524499982521-1ffd58dd89ea?auto=format&fit=crop&w=800&q=80",
-      "https://images.unsplash.com/photo-1523240795612-9a054b0db644?auto=format&fit=crop&w=800&q=80",
-    ],
-  },
-  {
-    name: "Slim Fit Chinos",
-    description:
-      "Comfort stretch chinos with a refined silhouette for day-to-night wear.",
+    name: "Khaki Chino Trousers",
+    description: "Khaki chinos with a clean, tapered everyday silhouette.",
     price: 1899,
     category: "Pants",
     stock: 33,
     image:
-      "https://images.unsplash.com/photo-1512436991641-6745cdb1723f?auto=format&fit=crop&w=800&q=80",
+      "https://images.unsplash.com/photo-1473966968600-fa801b869a1a?auto=format&fit=crop&w=800&q=80",
     images: [
-      "https://images.unsplash.com/photo-1512436991641-6745cdb1723f?auto=format&fit=crop&w=800&q=80",
-      "https://images.unsplash.com/photo-1541099649105-f69ad21f3246?auto=format&fit=crop&w=800&q=80",
+      "https://images.unsplash.com/photo-1473966968600-fa801b869a1a?auto=format&fit=crop&w=800&q=80",
     ],
   },
   {
-    name: "Elegant Dress Watch",
+    name: "Minimalist Wristwatch",
     description:
-      "Minimalist watch with leather strap and polished dial for formal occasions.",
+      "A minimalist wristwatch with a light dial and leather-tone strap.",
     price: 3999,
     category: "Accessories",
     stock: 27,
     image:
-      "https://images.unsplash.com/photo-1519741497252-27287287ca0c?auto=format&fit=crop&w=800&q=80",
+      "https://images.unsplash.com/photo-1524592094714-0f0654e20314?auto=format&fit=crop&w=800&q=80",
     images: [
-      "https://images.unsplash.com/photo-1519741497252-27287287ca0c?auto=format&fit=crop&w=800&q=80",
-      "https://images.unsplash.com/photo-1503435824048-a7997123d3d2?auto=format&fit=crop&w=800&q=80",
+      "https://images.unsplash.com/photo-1524592094714-0f0654e20314?auto=format&fit=crop&w=800&q=80",
     ],
   },
   {
-    name: "Travel Backpack",
-    description:
-      "Rugged travel backpack with laptop pocket and water-resistant exterior.",
+    name: "Navy Daypack",
+    description: "A navy backpack with a front zip pocket and top handle.",
     price: 2499,
     category: "Bags",
     stock: 35,
     image:
-      "https://images.unsplash.com/photo-1506617420156-8e4536971650?auto=format&fit=crop&w=800&q=80",
+      "https://images.unsplash.com/photo-1553062407-98eeb64c6a62?auto=format&fit=crop&w=800&q=80",
     images: [
-      "https://images.unsplash.com/photo-1506617420156-8e4536971650?auto=format&fit=crop&w=800&q=80",
-      "https://images.unsplash.com/photo-1498034532784-0df75727cd21?auto=format&fit=crop&w=800&q=80",
+      "https://images.unsplash.com/photo-1553062407-98eeb64c6a62?auto=format&fit=crop&w=800&q=80",
     ],
   },
   {
-    name: "Performance Hoodie",
-    description: "Soft hoodie with moisture-wicking fabric and a relaxed fit.",
+    name: "Gray Pullover Hoodie",
+    description: "A gray pullover hoodie with a relaxed shape.",
     price: 1699,
     category: "Hoodies",
     stock: 29,
     image:
-      "https://images.unsplash.com/photo-1523381213563-6a3bb3fdd814?auto=format&fit=crop&w=800&q=80",
+      "https://images.unsplash.com/photo-1556821840-3a63f95609a7?auto=format&fit=crop&w=800&q=80",
     images: [
-      "https://images.unsplash.com/photo-1523381213563-6a3bb3fdd814?auto=format&fit=crop&w=800&q=80",
-      "https://images.unsplash.com/photo-1520974736068-4cd68691f0e5?auto=format&fit=crop&w=800&q=80",
+      "https://images.unsplash.com/photo-1556821840-3a63f95609a7?auto=format&fit=crop&w=800&q=80",
     ],
   },
   {
-    name: "Casual Polo Shirt",
-    description:
-      "Breathable modal polo shirt with a refined collar and lasting comfort.",
-    price: 1399,
-    category: "Shirts",
-    stock: 50,
-    image:
-      "https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?auto=format&fit=crop&w=800&q=80",
-    images: [
-      "https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?auto=format&fit=crop&w=800&q=80",
-      "https://images.unsplash.com/photo-1541099649105-f69ad21f3246?auto=format&fit=crop&w=800&q=80",
-    ],
-  },
-  {
-    name: "Classic Wool Scarf",
-    description: "Soft wool scarf with a timeless design for cooler weather.",
-    price: 899,
-    category: "Accessories",
-    stock: 65,
-    image:
-      "https://images.unsplash.com/photo-1512436991641-6745cdb1723f?auto=format&fit=crop&w=800&q=80",
-    images: [
-      "https://images.unsplash.com/photo-1512436991641-6745cdb1723f?auto=format&fit=crop&w=800&q=80",
-      "https://images.unsplash.com/photo-1524499982521-1ffd58dd89ea?auto=format&fit=crop&w=800&q=80",
-    ],
-  },
-  {
-    name: "Wireless Charger",
-    description:
-      "Fast wireless charging pad compatible with the latest smartphones.",
-    price: 1199,
-    category: "Electronics",
-    stock: 38,
-    image:
-      "https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?auto=format&fit=crop&w=800&q=80",
-    images: [
-      "https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?auto=format&fit=crop&w=800&q=80",
-      "https://images.unsplash.com/photo-1511367461989-f85a21fda167?auto=format&fit=crop&w=800&q=80",
-    ],
-  },
-  {
-    name: "Patchwork Denim Shirt",
-    description:
-      "Unique patchwork denim shirt with a relaxed cut and detailed stitching.",
-    price: 2299,
-    category: "Shirts",
-    stock: 22,
-    image:
-      "https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?auto=format&fit=crop&w=800&q=80",
-    images: [
-      "https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?auto=format&fit=crop&w=800&q=80",
-      "https://images.unsplash.com/photo-1541099649105-f69ad21f3246?auto=format&fit=crop&w=800&q=80",
-    ],
-  },
-  {
-    name: "Tactical Field Jacket",
-    description:
-      "Rugged field jacket with multiple pockets and water-resistant fabric.",
-    price: 4499,
-    category: "Jackets",
-    stock: 19,
-    image:
-      "https://images.unsplash.com/photo-1512436991641-6745cdb1723f?auto=format&fit=crop&w=800&q=80",
-    images: [
-      "https://images.unsplash.com/photo-1512436991641-6745cdb1723f?auto=format&fit=crop&w=800&q=80",
-      "https://images.unsplash.com/photo-1541099649105-f69ad21f3246?auto=format&fit=crop&w=800&q=80",
-    ],
-  },
-  {
-    name: "Urban Crossbody Bag",
-    description:
-      "Lightweight crossbody bag perfect for city travel and essential storage.",
-    price: 1899,
-    category: "Bags",
-    stock: 41,
-    image:
-      "https://images.unsplash.com/photo-1506617420156-8e4536971650?auto=format&fit=crop&w=800&q=80",
-    images: [
-      "https://images.unsplash.com/photo-1506617420156-8e4536971650?auto=format&fit=crop&w=800&q=80",
-      "https://images.unsplash.com/photo-1498034532784-0df75727cd21?auto=format&fit=crop&w=800&q=80",
-    ],
-  },
-  {
-    name: "Travel Duffel Bag",
-    description:
-      "Spacious duffel bag with durable straps and a separate shoe compartment.",
-    price: 3299,
-    category: "Bags",
-    stock: 17,
-    image:
-      "https://images.unsplash.com/photo-1506617420156-8e4536971650?auto=format&fit=crop&w=800&q=80",
-    images: [
-      "https://images.unsplash.com/photo-1506617420156-8e4536971650?auto=format&fit=crop&w=800&q=80",
-      "https://images.unsplash.com/photo-1498034532784-0df75727cd21?auto=format&fit=crop&w=800&q=80",
-    ],
-  },
-  {
-    name: "Minimalist Wallet",
-    description:
-      "Slim wallet with RFID protection and premium vegetable-tanned leather.",
+    name: "Brown Leather Wallet",
+    description: "A slim brown fold-over wallet with a simple design.",
     price: 999,
     category: "Accessories",
     stock: 74,
     image:
-      "https://images.unsplash.com/photo-1524499982521-1ffd58dd89ea?auto=format&fit=crop&w=800&q=80",
+      "https://images.unsplash.com/photo-1627123424574-724758594e93?auto=format&fit=crop&w=800&q=80",
     images: [
-      "https://images.unsplash.com/photo-1524499982521-1ffd58dd89ea?auto=format&fit=crop&w=800&q=80",
-      "https://images.unsplash.com/photo-1523240795612-9a054b0db644?auto=format&fit=crop&w=800&q=80",
+      "https://images.unsplash.com/photo-1627123424574-724758594e93?auto=format&fit=crop&w=800&q=80",
     ],
   },
   {
-    name: "Premium Graphic Tee",
-    description:
-      "Soft jersey tee with bold graphic print and a relaxed silhouette.",
+    name: "Classic Crew T-Shirt",
+    description: "A short-sleeve crew-neck T-shirt with a relaxed fit.",
     price: 999,
     category: "Tops",
     stock: 60,
@@ -343,50 +190,223 @@ const sampleProducts = [
       "https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?auto=format&fit=crop&w=800&q=80",
     images: [
       "https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?auto=format&fit=crop&w=800&q=80",
-      "https://images.unsplash.com/photo-1541099649105-f69ad21f3246?auto=format&fit=crop&w=800&q=80",
     ],
   },
 ];
 
-const createSeller = async () => {
-  const sellerEmail = "seller@demo.com";
-  let seller = await User.findOne({ email: sellerEmail });
-  if (!seller) {
-    seller = new User({
-      name: "Demo Seller",
-      email: sellerEmail,
-      password: "password123",
-      role: "seller",
-    });
-    await seller.save();
-    console.log("Created seller user:", sellerEmail);
+const categoryArtworkByName = new Map([
+  ["Jeans", "/category-images/jeans.jpg"],
+  ["Shirts", "/category-images/shirts.jpg"],
+  ["Bags", "/category-images/bags.jpg"],
+  ["Shoes", "/category-images/shoes.jpg"],
+  ["Jackets", "/category-images/jackets.jpg"],
+  ["Accessories", "/category-images/accessories.jpg"],
+  ["Electronics", "/category-images/electronics.jpg"],
+  ["Pants", "/category-images/pants.jpg"],
+  ["Hoodies", "/category-images/hoodies.jpg"],
+  ["Tops", "/category-images/tops.jpg"],
+]);
+
+const legacyCategoryArtworkByName = new Map([
+  ["Jeans", ["/jeans.webp"]],
+  ["Shirts", ["/shirts.jpg"]],
+  ["Bags", ["/bags.jpg"]],
+  ["Shoes", ["/shoes.jpeg"]],
+  ["Jackets", ["/jackets.jpg"]],
+  [
+    "Accessories",
+    [
+      sampleProducts.find(({ name }) => name === "Round Sunglasses").image,
+    ],
+  ],
+  [
+    "Electronics",
+    [
+      sampleProducts.find(({ name }) => name === "Wireless Headphones").image,
+    ],
+  ],
+  [
+    "Pants",
+    [
+      sampleProducts.find(({ name }) => name === "Khaki Chino Trousers").image,
+    ],
+  ],
+  [
+    "Hoodies",
+    [
+      sampleProducts.find(({ name }) => name === "Gray Pullover Hoodie").image,
+    ],
+  ],
+  [
+    "Tops",
+    [
+      sampleProducts.find(({ name }) => name === "Classic Crew T-Shirt").image,
+    ],
+  ],
+]);
+
+const sampleCategories = [
+  ...new Set(sampleProducts.map(({ category }) => category)),
+].map((name) => {
+  const image = categoryArtworkByName.get(name);
+  if (!image) {
+    throw new Error(`Missing seed artwork for category "${name}".`);
   }
-  return seller;
+
+  return {
+    name,
+    slug: slugifyCategory(name),
+    description: `Explore our ${name.toLowerCase()} collection.`,
+    image,
+    isActive: true,
+  };
+});
+
+const getImageId = (url) => {
+  try {
+    return new URL(url).pathname.split("/").pop();
+  } catch {
+    return null;
+  }
+};
+
+const legacyProductNames = {
+  "Blue Patterned Shirt": "Soft Cotton Shirt",
+  "Structured Shoulder Bag": "Leather Messenger Bag",
+  "Red Running Sneakers": "Running Sneakers",
+  "Round Sunglasses": "Aviator Sunglasses",
+  "Brown Lace-Up Boots": "Leather Boots",
+  "Khaki Chino Trousers": "Slim Fit Chinos",
+  "Minimalist Wristwatch": "Elegant Dress Watch",
+  "Navy Daypack": "Travel Backpack",
+  "Gray Pullover Hoodie": "Performance Hoodie",
+  "Brown Leather Wallet": "Minimalist Wallet",
+  "Classic Crew T-Shirt": "Premium Graphic Tee",
 };
 
 const seedProducts = async () => {
-  try {
-    const seller = await createSeller();
+  if (config.NODE_ENV === "production") {
+    console.error("Sample data seeding is disabled when NODE_ENV=production.");
+    process.exitCode = 1;
+    return;
+  }
 
-    const existingCount = await Product.countDocuments();
-    if (existingCount >= sampleProducts.length) {
-      console.log(
-        `Database already contains ${existingCount} products. Seed skipped.`,
+  try {
+    await connectDB();
+
+    const seller = await User.findOne({ role: "seller" }).select("_id").lean();
+    if (!seller) {
+      console.error(
+        "No seller account exists. Create a seller account, then run the seed command again.",
       );
-      process.exit(0);
+      process.exitCode = 1;
+      return;
     }
 
-    await Product.deleteMany({});
-    const productDocs = sampleProducts.map((product) => ({
-      ...product,
+    const categoryResult = await Category.bulkWrite(
+      sampleCategories.map((category) => ({
+        updateOne: {
+          filter: { slug: category.slug },
+          update: { $setOnInsert: category },
+          upsert: true,
+        },
+      })),
+      { ordered: true },
+    );
+    await Category.bulkWrite(
+      sampleCategories.map((category) => ({
+        updateOne: {
+          filter: {
+            slug: category.slug,
+            image: {
+              $in: [
+                "",
+                ...(legacyCategoryArtworkByName.get(category.name) ?? []),
+              ],
+            },
+          },
+          update: { $set: { image: category.image } },
+        },
+      })),
+      { ordered: true },
+    );
+
+    const productNames = sampleProducts
+      .flatMap(({ name }) => [name, legacyProductNames[name]])
+      .filter(Boolean);
+    const existingProducts = await Product.find({
       sellerId: seller._id,
-    }));
-    await Product.create(productDocs);
-    console.log(`Seeded ${productDocs.length} products successfully.`);
-    process.exit(0);
+      name: { $in: productNames },
+    })
+      .select("_id name image")
+      .lean();
+    const existingByName = new Map(
+      existingProducts.map((product) => [product.name, product]),
+    );
+    const operations = [];
+    let preservedCount = 0;
+
+    for (const product of sampleProducts) {
+      const legacyName = legacyProductNames[product.name];
+      const existing =
+        existingByName.get(product.name) ||
+        existingByName.get(legacyName);
+      if (!existing) {
+        operations.push({
+          updateOne: {
+            filter: { name: product.name, sellerId: seller._id },
+            update: { $setOnInsert: { ...product, sellerId: seller._id } },
+            upsert: true,
+          },
+        });
+        continue;
+      }
+
+      const legacyImageId = legacySampleImageIdByName.get(existing.name);
+      if (legacyImageId !== getImageId(existing.image)) {
+        preservedCount += 1;
+        continue;
+      }
+
+      operations.push({
+        updateOne: {
+          filter: {
+            _id: existing._id,
+            name: existing.name,
+            image: existing.image,
+          },
+          update: {
+            $set: {
+              name: product.name,
+              description: product.description,
+              category: product.category,
+              image: product.image,
+              images: product.images,
+            },
+          },
+        },
+      });
+    }
+
+    const result = operations.length
+      ? await Product.bulkWrite(operations, { ordered: true })
+      : { upsertedCount: 0, modifiedCount: 0 };
+
+    console.log(
+      `Seed complete: ${categoryResult.upsertedCount} categories added; ${result.upsertedCount} products added, ${result.modifiedCount} legacy images refreshed, ${preservedCount} seller-edited products preserved.`,
+    );
   } catch (error) {
-    console.error("Seed failed:", error);
-    process.exit(1);
+    console.error(
+      "Seed failed. Check that MongoDB is running, MONGO_URI is configured, and product data is valid.",
+    );
+    process.exitCode = 1;
+  } finally {
+    try {
+      await disconnectDB();
+    } catch {
+      console.error("Could not close the MongoDB connection cleanly.");
+      process.exitCode = 1;
+    }
   }
 };
 

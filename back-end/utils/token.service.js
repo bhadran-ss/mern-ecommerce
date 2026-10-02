@@ -1,13 +1,11 @@
 import * as jose from "jose";
-import dotenv from "dotenv";
 import { createHash, randomUUID } from "crypto";
+import config from "../config/env.js";
 
-dotenv.config({ quiet: true });
-
-const ACCESS_TOKEN_SECRET = process.env.JWE_SECRET;
-const REFRESH_TOKEN_SECRET = process.env.JWE_REFRESH_SECRET;
-const ACCESS_TOKEN_EXPIRATION = process.env.JWE_ACCESS_EXPIRATION || "15m";
-const REFRESH_TOKEN_EXPIRATION = process.env.JWE_REFRESH_EXPIRATION || "7d";
+const ACCESS_TOKEN_SECRET = config.JWE_SECRET;
+const REFRESH_TOKEN_SECRET = config.JWE_REFRESH_SECRET;
+const ACCESS_TOKEN_EXPIRATION = config.JWE_ACCESS_EXPIRATION;
+const REFRESH_TOKEN_EXPIRATION = config.JWE_REFRESH_EXPIRATION;
 
 const toSeconds = (duration) => {
   const source = String(duration).trim();

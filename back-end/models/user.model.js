@@ -1,6 +1,66 @@
 import mongoose from "mongoose";
 import bcrypt from "bcryptjs";
 
+const sellerApplicationSchema = new mongoose.Schema(
+  {
+    storeName: {
+      type: String,
+      required: true,
+      trim: true,
+      minlength: 2,
+      maxlength: 100,
+    },
+    contactPhone: {
+      type: String,
+      required: true,
+      trim: true,
+      maxlength: 24,
+    },
+    businessType: {
+      type: String,
+      enum: ["individual", "registered"],
+      required: true,
+    },
+    category: {
+      type: String,
+      enum: ["Clothing", "Bags & accessories", "Shoes", "Other"],
+      required: true,
+    },
+    website: {
+      type: String,
+      trim: true,
+      maxlength: 200,
+      default: "",
+    },
+    description: {
+      type: String,
+      required: true,
+      trim: true,
+      minlength: 30,
+      maxlength: 1000,
+    },
+    status: {
+      type: String,
+      enum: ["pending", "approved", "rejected"],
+      required: true,
+    },
+    submittedAt: {
+      type: Date,
+      required: true,
+    },
+    reviewedAt: {
+      type: Date,
+      default: null,
+    },
+    reviewNote: {
+      type: String,
+      maxlength: 500,
+      default: "",
+    },
+  },
+  { _id: false },
+);
+
 const userSchema = new mongoose.Schema(
   {
     name: {
@@ -18,6 +78,7 @@ const userSchema = new mongoose.Schema(
       type: String,
       required: true,
       minlength: [6, "Password must be at least 6 characters long"],
+      select: false,
     },
     cartItems: [
       {
@@ -36,29 +97,30 @@ const userSchema = new mongoose.Schema(
       enum: ["customer", "seller", "admin"],
       default: "customer",
     },
+    sellerApplication: {
+      type: sellerApplicationSchema,
+      default: undefined,
+    },
   },
   { timestamps: true },
 );
 
-// Hash password before saving
-userSchema.pre("save", async function (next) {
-  if (!this.isModified("password")) return next();
-  try {
-    const salt = await bcrypt.genSalt(10);
-    this.password = await bcrypt.hash(this.password, salt);
-    next();
-  } catch (error) {
-    next(error);
-  }
+const removePasswordField = (_document, returnedObject) => {
+  delete returnedObject.password;
+  return returnedObject;
+};
+
+userSchema.set("toJSON", { transform: removePasswordField });
+userSchema.set("toObject", { transform: removePasswordField });
+
+userSchema.pre("save", async function () {
+  if (!this.isModified("password")) return;
+  this.password = await bcrypt.hash(this.password, 12);
 });
 
 // Compare password method
 userSchema.methods.comparePassword = async function (password) {
-  try {
-    return await bcrypt.compare(password, this.password);
-  } catch (error) {
-    throw new Error("Error comparing password");
-  }
+  return bcrypt.compare(password, this.password);
 };
 
 const User = mongoose.model("User", userSchema);

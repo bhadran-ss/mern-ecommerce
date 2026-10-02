@@ -2,17 +2,20 @@ import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import axios from "../../lib/axios";
 import toast from "react-hot-toast";
 
+const getErrorMessage = (error, fallback) =>
+  error.response?.data?.error?.message || error.response?.data?.message || fallback;
+
 const initialState = {
   user: null,
   isLoading: false,
   checkingAuth: true,
+  error: null,
 };
 
 export const registerUser = createAsyncThunk(
   "auth/registerUser",
   async (formData, { rejectWithValue }) => {
     if (formData.password !== formData.confirmPassword) {
-      toast.error("Passwords do not match");
       return rejectWithValue("Passwords do not match");
     }
 
@@ -21,10 +24,8 @@ export const registerUser = createAsyncThunk(
       toast.success(data.message);
       return data.user;
     } catch (error) {
-      toast.error(error.response?.data?.message || "Registration failed");
-      return rejectWithValue(
-        error.response?.data?.message || "Registration failed",
-      );
+      const message = getErrorMessage(error, "Registration failed");
+      return rejectWithValue(message);
     }
   },
 );
@@ -37,8 +38,8 @@ export const loginUser = createAsyncThunk(
       toast.success("Login successful");
       return data.user;
     } catch (error) {
-      toast.error(error.response?.data?.message || "Login failed");
-      return rejectWithValue(error.response?.data?.message || "Login failed");
+      const message = getErrorMessage(error, "Login failed");
+      return rejectWithValue(message);
     }
   },
 );
@@ -51,8 +52,9 @@ export const logoutUser = createAsyncThunk(
       toast.success("Logout successful");
       return null;
     } catch (error) {
-      toast.error(error.response?.data?.message || "Logout failed");
-      return rejectWithValue(error.response?.data?.message || "Logout failed");
+      const message = getErrorMessage(error, "Logout failed");
+      toast.error(message);
+      return rejectWithValue(message);
     }
   },
 );
@@ -64,9 +66,7 @@ export const checkAuth = createAsyncThunk(
       const { data } = await axios.get("/auth/profile");
       return data.user;
     } catch (error) {
-      return rejectWithValue(
-        error.response?.data?.message || "Auth check failed",
-      );
+      return rejectWithValue(getErrorMessage(error, "Auth check failed"));
     }
   },
 );
@@ -78,35 +78,54 @@ const authSlice = createSlice({
     clearAuthError: (state) => {
       state.error = null;
     },
+    sessionExpired: (state) => {
+      state.user = null;
+      state.isLoading = false;
+      state.checkingAuth = false;
+      state.error = null;
+    },
   },
   extraReducers: (builder) => {
     builder
       .addCase(registerUser.pending, (state) => {
         state.isLoading = true;
+        state.error = null;
       })
       .addCase(registerUser.fulfilled, (state, action) => {
         state.user = action.payload;
         state.isLoading = false;
         state.checkingAuth = false;
+        state.error = null;
       })
-      .addCase(registerUser.rejected, (state) => {
+      .addCase(registerUser.rejected, (state, action) => {
         state.isLoading = false;
         state.checkingAuth = false;
+        state.error = action.payload || "Registration failed.";
       })
       .addCase(loginUser.pending, (state) => {
         state.isLoading = true;
+        state.error = null;
       })
       .addCase(loginUser.fulfilled, (state, action) => {
         state.user = action.payload;
         state.isLoading = false;
         state.checkingAuth = false;
+        state.error = null;
       })
-      .addCase(loginUser.rejected, (state) => {
+      .addCase(loginUser.rejected, (state, action) => {
         state.isLoading = false;
         state.checkingAuth = false;
+        state.error = action.payload || "Login failed.";
       })
       .addCase(logoutUser.fulfilled, (state) => {
         state.user = null;
+        state.isLoading = false;
+        state.checkingAuth = false;
+      })
+      .addCase(logoutUser.rejected, (state) => {
+        state.user = null;
+        state.isLoading = false;
+        state.checkingAuth = false;
       })
       .addCase(checkAuth.pending, (state) => {
         state.checkingAuth = true;
@@ -122,5 +141,5 @@ const authSlice = createSlice({
   },
 });
 
-export const { clearAuthError } = authSlice.actions;
+export const { clearAuthError, sessionExpired } = authSlice.actions;
 export default authSlice.reducer;

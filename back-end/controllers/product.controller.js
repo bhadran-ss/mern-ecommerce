@@ -1,7 +1,22 @@
-import cloudinary from "../config/cloudinary.js";
 import Product from "../models/product.model.js";
+import { findActiveCategoryName, slugifyCategory } from "../utils/category.js";
+import { ApiError } from "../middleware/errors.js";
+import {
+  cleanupProductImages,
+  getProductImageReferences,
+  uploadProductImages,
+} from "../services/product-image.service.js";
+import {
+  getProductImageInputs,
+  validateProductImageDataUrls,
+} from "../validation/product-image.validation.js";
+import {
+  validateProductBody,
+  validateProductId,
+  validateProductSearchName,
+} from "../validation/product.validation.js";
 
-const getAllProducts = async (req, res) => {
+const getAllProducts = async (req, res, next) => {
   try {
     const products = await Product.find();
     res.status(200).json({
@@ -10,14 +25,23 @@ const getAllProducts = async (req, res) => {
       data: products,
     });
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: "Server Error",
-      error: error.message,
-    });
+    return next(error);
   }
 };
-const getFeaturedProducts = async (req, res) => {
+
+const getSellerProducts = async (req, res, next) => {
+  try {
+    const products = await Product.find({ sellerId: req.user._id });
+    return res.status(200).json({
+      success: true,
+      count: products.length,
+      data: products,
+    });
+  } catch (error) {
+    return next(error);
+  }
+};
+const getFeaturedProducts = async (req, res, next) => {
   try {
     const products = await Product.find({ isFeatured: true });
     res.status(200).json({
@@ -26,120 +50,102 @@ const getFeaturedProducts = async (req, res) => {
       data: products,
     });
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: "Server Error",
-      error: error.message,
-    });
+    return next(error);
   }
 };
-const getProductById = async (req, res) => {
+const getProductById = async (req, res, next) => {
   const { id } = req.params;
   try {
+    validateProductId(id);
     const product = await Product.findById(id);
     if (!product) {
-      return res.status(404).json({
-        success: false,
-        message: "Product not found",
-      });
+      return next(new ApiError(404, "PRODUCT_NOT_FOUND", "Product not found."));
     }
     res.status(200).json({
       success: true,
       data: product,
     });
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: "Server Error",
-      error: error.message,
-    });
+    return next(error);
   }
 };
-const searchProducts = async (req, res) => {
+const searchProducts = async (req, res, next) => {
   const { name } = req.query;
-  console.log("Search query:", name);
   try {
-    if (!name || name.trim() === "") {
-      return res.status(400).json({
-        success: false,
-        message: "Product name is required",
-      });
-    }
+    const escapedName = validateProductSearchName(name);
     const products = await Product.find({
-      name: { $regex: name, $options: "i" },
+      name: { $regex: escapedName, $options: "i" },
     });
     res.status(200).json({
       success: true,
       data: products,
     });
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: "Server error",
-      error: error.message,
-    });
+    return next(error);
   }
 };
 
-const createProduct = async (req, res) => {
+const createProduct = async (req, res, next) => {
   try {
+    validateProductBody(req.body, { creating: true, role: req.user.role });
     const {
       name,
       description,
       price,
-      images = [],
-      image,
       category,
       stock,
     } = req.body;
-    const uploadedImages = [];
+    const categoryName = await findActiveCategoryName(slugifyCategory(category));
+    if (!categoryName) {
+      return next(
+        new ApiError(
+          400,
+          "INVALID_CATEGORY",
+          "Choose an active store category.",
+        ),
+      );
+    }
+    const { dataUrls } = getProductImageInputs(req.body);
+    validateProductImageDataUrls(dataUrls);
+    const logger = req.app.locals.logger;
+    const uploadedImages = await uploadProductImages(dataUrls, logger);
+    let product;
 
-    if (Array.isArray(images) && images.length > 0) {
-      for (const file of images) {
-        const cloudinaryResponse = await cloudinary.uploader.upload(file, {
-          folder: "products",
-        });
-        uploadedImages.push(cloudinaryResponse.secure_url);
-      }
-    } else if (image) {
-      const cloudinaryResponse = await cloudinary.uploader.upload(image, {
-        folder: "products",
+    try {
+      product = await Product.create({
+        name,
+        description,
+        price,
+        image: uploadedImages[0]?.secure_url || "",
+        images: uploadedImages.map((image) => image.secure_url),
+        stock: stock ?? 0,
+        category: categoryName,
+        sellerId: req.user._id,
       });
-      uploadedImages.push(cloudinaryResponse.secure_url);
+    } catch (error) {
+      await cleanupProductImages(uploadedImages, logger);
+      throw error;
     }
 
-    const product = await Product.create({
-      name,
-      description,
-      price,
-      image: uploadedImages[0] || "",
-      images: uploadedImages,
-      stock: stock ?? 0,
-      category,
-      sellerId: req.user._id,
-    });
     res.status(201).json({
       success: true,
       data: product,
     });
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: "Server Error",
-      error: error.message,
-    });
+    return next(error);
   }
 };
 
-const updateProduct = async (req, res) => {
+const updateProduct = async (req, res, next) => {
   try {
     const { id } = req.params;
+    validateProductId(id);
+    validateProductBody(req.body, { role: req.user.role });
+
     const {
       name,
       description,
       price,
-      images = [],
-      image,
       category,
       isFeatured,
       stock,
@@ -147,46 +153,50 @@ const updateProduct = async (req, res) => {
 
     const product = await Product.findById(id);
     if (!product) {
-      return res.status(404).json({
-        success: false,
-        message: "Product not found",
-      });
+      return next(new ApiError(404, "PRODUCT_NOT_FOUND", "Product not found."));
     }
 
     if (
       req.user.role !== "admin" &&
       product.sellerId.toString() !== req.user._id.toString()
     ) {
-      return res.status(403).json({
-        success: false,
-        message: "Forbidden. You can only edit your own products.",
-      });
+      return next(new ApiError(403, "FORBIDDEN", "You can only edit your own products."));
     }
 
-    if (Array.isArray(images) && images.length > 0) {
-      const uploadedImages = [];
-      for (const file of images) {
-        const cloudinaryResponse = await cloudinary.uploader.upload(file, {
-          folder: "products",
-        });
-        uploadedImages.push(cloudinaryResponse.secure_url);
-      }
-      product.images = uploadedImages;
-      product.image = uploadedImages[0] || product.image;
-    } else if (image && image !== product.image) {
-      const cloudinaryResponse = await cloudinary.uploader.upload(image, {
-        folder: "products",
-      });
-      product.image = cloudinaryResponse.secure_url;
+    const categoryName =
+      category === undefined
+        ? product.category
+        : await findActiveCategoryName(slugifyCategory(category));
+    if (!categoryName) {
+      return next(
+        new ApiError(
+          400,
+          "INVALID_CATEGORY",
+          "Choose an active store category.",
+        ),
+      );
+    }
+
+    const { dataUrls, field } = getProductImageInputs(req.body);
+    validateProductImageDataUrls(dataUrls);
+    const logger = req.app.locals.logger;
+    const previousImageReferences = getProductImageReferences(product);
+    const uploadedImages = await uploadProductImages(dataUrls, logger);
+
+    if (field === "images" && uploadedImages.length > 0) {
+      product.images = uploadedImages.map((image) => image.secure_url);
+      product.image = uploadedImages[0].secure_url;
+    } else if (field === "image" && uploadedImages.length > 0) {
+      product.image = uploadedImages[0].secure_url;
       if (!product.images || product.images.length === 0) {
-        product.images = [cloudinaryResponse.secure_url];
+        product.images = [uploadedImages[0].secure_url];
       }
     }
 
     product.name = name ?? product.name;
     product.description = description ?? product.description;
     product.price = price ?? product.price;
-    product.category = category ?? product.category;
+    product.category = categoryName;
     if (typeof isFeatured === "boolean") {
       product.isFeatured = isFeatured;
     }
@@ -194,119 +204,88 @@ const updateProduct = async (req, res) => {
       product.stock = stock;
     }
 
-    await product.save();
+    try {
+      await product.save();
+    } catch (error) {
+      await cleanupProductImages(uploadedImages, logger);
+      throw error;
+    }
+
+    if (uploadedImages.length > 0) {
+      const retainedImages = new Set(getProductImageReferences(product));
+      const replacedImages = previousImageReferences.filter(
+        (imageUrl) => !retainedImages.has(imageUrl),
+      );
+      await cleanupProductImages(replacedImages, logger);
+    }
 
     res.status(200).json({
       success: true,
       data: product,
     });
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: "Server Error",
-      error: error.message,
-    });
+    return next(error);
   }
 };
 
-const deleteProduct = async (req, res) => {
+const deleteProduct = async (req, res, next) => {
   try {
     const { id } = req.params;
+    validateProductId(id);
     const product = await Product.findById(id);
     if (!product) {
-      return res.status(404).json({
-        success: false,
-        message: "Product not found",
-      });
+      return next(new ApiError(404, "PRODUCT_NOT_FOUND", "Product not found."));
     }
 
     if (
       req.user.role !== "admin" &&
       product.sellerId.toString() !== req.user._id.toString()
     ) {
-      return res.status(403).json({
-        success: false,
-        message: "Forbidden. You can only delete your own products.",
-      });
+      return next(new ApiError(403, "FORBIDDEN", "You can only delete your own products."));
     }
 
-    if (product.image) {
-      const publicId = product.image.split("/").pop().split(".")[0];
-      try {
-        await cloudinary.uploader.destroy(`products/${publicId}`);
-      } catch (error) {
-        console.error("Error deleting image from Cloudinary:", error);
-        return res.status(500).json({
-          success: false,
-          message: "Error deleting image from Cloudinary",
-        });
-      }
-    }
+    const imageReferences = getProductImageReferences(product);
     await product.deleteOne();
+    await cleanupProductImages(imageReferences, req.app.locals.logger);
     res.status(200).json({
       success: true,
       message: "Product deleted successfully",
     });
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: "Server Error",
-      error: error.message,
-    });
+    return next(error);
   }
 };
-const getProductsByCategory = async (req, res) => {
-  const { category } = req.params;
-  try {
-    const products = await Product.find({ category });
-    if (products.length === 0) {
-      return res.status(404).json({
-        success: false,
-        message: "No products found in this category",
-      });
-    }
-    res.status(200).json(products);
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: "Server Error",
-      error: error.message,
-    });
-  }
-};
-const toggleFeaturedProduct = async (req, res) => {
+const toggleFeaturedProduct = async (req, res, next) => {
   const { id } = req.params;
   try {
+    validateProductId(id);
     const product = await Product.findById(id);
     if (!product) {
-      return res.status(404).json({
-        success: false,
-        message: "Product not found",
-      });
+      return next(new ApiError(404, "PRODUCT_NOT_FOUND", "Product not found."));
     }
     product.isFeatured = !product.isFeatured;
     await product.save();
     res.status(200).json({
       success: true,
+      data: {
+        _id: product._id,
+        isFeatured: product.isFeatured,
+      },
       message: `Product ${
         product.isFeatured ? "featured" : "unfeatured"
       } successfully`,
     });
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: "Server Error",
-      error: error.message,
-    });
+    return next(error);
   }
 };
 export {
   getAllProducts,
+  getSellerProducts,
   getFeaturedProducts,
   createProduct,
   updateProduct,
   deleteProduct,
-  getProductsByCategory,
   getProductById,
   toggleFeaturedProduct,
   searchProducts,

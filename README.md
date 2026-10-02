@@ -8,6 +8,23 @@ flow, seller product listings, and administrator catalog and category tools.
 > **Demo project:** Stripe live payments are not supported. Sample products and
 > images are illustrative and should not be presented as real inventory.
 
+## Live demo
+
+Vistyle is deployed on Render:
+
+| Resource | URL |
+| --- | --- |
+| Storefront | [https://vistyle-jsf6.onrender.com](https://vistyle-jsf6.onrender.com) |
+| API health | [https://vistyle-jsf6.onrender.com/api/health](https://vistyle-jsf6.onrender.com/api/health) |
+| API readiness | [https://vistyle-jsf6.onrender.com/api/ready](https://vistyle-jsf6.onrender.com/api/ready) |
+
+The storefront and API share the same origin. The deployed frontend uses
+`/api` for API requests, and the backend's `CLIENT_URL` must be set to the
+exact storefront origin, `https://vistyle-jsf6.onrender.com`. This origin
+configuration is required for browser requests: an incorrect `CLIENT_URL`
+causes the API's credentialed CORS check to reject requests, which can prevent
+the frontend assets from loading correctly.
+
 ## Application overview
 
 ### Customer storefront
@@ -167,12 +184,13 @@ Stripe live secret keys are rejected.
 | `VITE_STRIPE_PUBLISHABLE_KEY` | No       | Optional Stripe test publishable key beginning with `pk_test_`.                                                              |
 
 The frontend defaults to `/api` outside development if `VITE_API_URL` is not
-set. If the frontend is hosted separately from the backend, set `VITE_API_URL`
-to the backend API URL at build time and set backend `CLIENT_URL` to the
-frontend's exact origin. Because session cookies use `SameSite=Strict`, separate
-hosts should remain same-site (for example, subdomains of the same
-registrable domain); a cross-site frontend/API deployment would require a
-reviewed cookie policy change.
+set. For a same-origin deployment, keep it unset or set it to `/api`. If the
+frontend is hosted separately from the backend, set `VITE_API_URL` to the
+backend API URL at build time and set backend `CLIENT_URL` to the frontend's
+exact origin. Because session cookies use `SameSite=Strict`, separate hosts
+should remain same-site (for example, subdomains of the same registrable
+domain); a cross-site frontend/API deployment would require a reviewed cookie
+policy change.
 
 ## Sample products and categories
 
@@ -283,13 +301,13 @@ responses also include a request ID for support and log correlation.
    `STRIPE_WEBHOOK_SECRET`, then restart the backend.
 5. Complete a test checkout and verify the resulting order in the application.
 
-For a future hosted demo, configure a Stripe **test-mode** webhook and point it
-to `https://YOUR-DEPLOYED-DOMAIN/api/payment/webhook`. Set the corresponding
+For the hosted demo, configure a Stripe **test-mode** webhook and point it to
+`https://vistyle-jsf6.onrender.com/api/payment/webhook`. Set the corresponding
 webhook signing secret in the backend environment. Do not use production
 payment credentials. Do not treat the browser's success redirect as proof of
 payment; the application relies on the verified webhook.
 
-## Production deployment checklist
+## Deployment configuration
 
 The backend serves `front-end/dist` when `NODE_ENV=production`; build the
 frontend before starting the backend:
@@ -299,12 +317,24 @@ npm run build
 npm start
 ```
 
-Before deployment:
+The current Render service uses the repository's `main` branch, runs from the
+repository root, and builds and starts with:
+
+```sh
+npm ci && npm ci --prefix front-end && npm run build
+npm start
+```
+
+Render provides `PORT`. Its health-check path is `/api/health`; use
+`/api/ready` when you also want to verify MongoDB and Redis connectivity.
+
+For this deployment:
 
 - Set `NODE_ENV=production`, the platform-provided `PORT`, and the public
-  `CLIENT_URL`.
-- Build the frontend with the correct `VITE_API_URL`; use `/api` for the
-  same-origin setup.
+  `CLIENT_URL` to the exact storefront origin listed under [Live demo](#live-demo)
+  (no `/api` path).
+- Keep `VITE_API_URL` unset or set it to `/api` for the same-origin frontend
+  build. Do not set it to `http://localhost:5000/api` in Render.
 - Provide production-grade MongoDB and Redis URLs through the host's secret
   manager. MongoDB must support transactions for checkout fulfillment.
 - Generate and store distinct JWE secrets securely; never reuse example
